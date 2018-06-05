@@ -4,41 +4,59 @@ author: "Marshall McQuillen"
 output: pdf_document
 ---
 ## Guiding question
+
 Which passengers will survive the sinking of the Titanic?
 
 ## Secondary Questions
+
 1. What characteristics separate those who survived from those who died?
 2. What charactersistics make someone more likely to survive?
-3. What combination of characteristics leads to the best prediction of whether someone will survive?
-      
+3. How do different characteristics of passengers vary with one another?
 
-```{r import_data}
+```{r import_data, include=FALSE}
 setwd("/Users/marsh/data_science_projects/Kaggle_Competitions/titanic_survival_classification/")
 training <- read.csv('/Users/marsh/data_science_projects/Kaggle_Competitions/titanic_survival_classification/titanic_train.csv')
-testing <- read.csv("/Users/marsh/data_science_projects/Kaggle_Competitions/titanic_survival_classification/titanic_test.csv")
 ```
 
 ```{r install/load_packages}
 # install.packages("tidyverse")
 suppressPackageStartupMessages(library(ggplot2))
 suppressPackageStartupMessages(library(dplyr))
-# suppressPackageStartupMessages(library(plotly))
 ```
+
+## Data Overview
+
+Looking at the training data froma bird-eye view, there are 891 observations representing passengers and 12 variables. First and foremost, we can see in the Cabin and Embarked columns that the first entry is an empty string, indicating that our data is probably not perfectly clean (no surprises there). Checking to see where any Null's might be, it becomes clear that there are in fact no nulls. This illustrates the difference between a 
+
+| Test 1 | Test 2 | Test 3 |
+| - | - | - |
+| 1 | 2 | 3 | 
+
+```{r data_overview}
+str(training)
+
+# view null count
+nulls <- lapply(training[,1:12], is.null)
+as.data.frame(lapply(nulls, sum))
+
+# view NA count
+na_count <- lapply(training[,1:12], is.na)
+as.data.frame(lapply(na_count, sum))
+```
+
 ## Data Cleaning
 
 All the NA's in the data set are in the Age column. The column is close to 20% NA's so building a model on that variable won't be the best idea.
 ```{r data_cleaning}
 #Set classes
-str(training)
+
 training$PassengerId <- as.factor(training$PassengerId)
 training$Survived <- as.factor(training$Survived)
 training$Pclass <- as.factor(training$Pclass)
 training$SibSp <- as.factor(training$SibSp)
 training$Parch <- as.factor(training$Parch)
 
-#View where NA's are in realtion to columns
-NAs <- lapply(training[,1:12], is.na)
-lapply(NAs, sum)
+
 
 #Percent of Age attribute that is NA
 paste(round(sum(is.na(training$Age))/length(training$Age)*100, digits = 2), "%", sep = "")
