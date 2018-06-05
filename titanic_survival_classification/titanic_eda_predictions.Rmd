@@ -1,0 +1,273 @@
+---
+title: "An Illustrative Look"
+output: html_document
+author: Marshall McQuillen
+---
+## Guiding question
+Which passengers will survive the sinking of the Titanic?
+
+## Secondary Questions
+1. What characteristics separate those who survived from those who died?
+2. What charactersistics make someone more likely to survive?
+3. What combination of characteristics leads to the best prediction of whether someone will survive?
+      
+
+```{r import_data}
+setwd("/Users/marsh/data_science_projects/kaggle_titanic_ml/")
+training <- read.csv('/Users/marsh/data_science_projects/kaggle_titanic_ml/titanic_train.csv')
+testing <- read.csv("/Users/marsh/data_science_projects/kaggle_titanic_ml//titanic_test.csv")
+```
+
+```{r install/load_packages}
+suppressPackageStartupMessages(library(ggplot2))
+suppressPackageStartupMessages(library(dplyr))
+suppressPackageStartupMessages(library(plotly))
+```
+## Data Cleaning
+
+All the NA's in the data set are in the Age column. The column is close to 20% NA's so building a model on that variable won't be the best idea.
+```{r data_cleaning}
+#Set classes
+str(training)
+training$PassengerId <- as.factor(training$PassengerId)
+training$Survived <- as.factor(training$Survived)
+training$Pclass <- as.factor(training$Pclass)
+training$SibSp <- as.factor(training$SibSp)
+training$Parch <- as.factor(training$Parch)
+
+#View where NA's are in realtion to columns
+NAs <- lapply(training[,1:12], is.na)
+lapply(NAs, sum)
+
+#Percent of Age attribute that is NA
+paste(round(sum(is.na(training$Age))/length(training$Age)*100, digits = 2), "%", sep = "")
+```
+
+## 2 Bayesian Survival
+
+### 2.2 Does Money Sink or Swim?
+
+#### Illustrating Bayes Theorem with Survival Rates and Socio-Economic Status
+
+By creating a table with the Pclass and Survived variables, I can get a good sense of the number of passengers that lived and died, based on their Socio-Economic Status (SES). Simple summation and division returns the probabilites of a passenger living given their respective SES.
+
+```{r bayes_part_1}
+#Probability of living by socio-economic status
+pclass_table <- with(training, table(Survived, Pclass))
+upper_class <- pclass_table[2,1]/sum(pclass_table[,1])*100
+middle_class <- pclass_table[2,2]/sum(pclass_table[,2])*100
+lower_class <- pclass_table[2,3]/sum(pclass_table[,3])*100
+
+pclass_table
+#Probability of living given Upper Class
+paste(round(upper_class, digits = 2), "%", sep = "")
+
+#Probability of living given Middle Class
+paste(round(middle_class, digits = 2), "%", sep = "")
+
+#Probability of living given Lower Class
+paste(round(lower_class, digits = 2), "%", sep = "")
+```
+
+The same information can be displayed visually as follows.
+
+```{r bayes_part_2}
+g <- ggplot(training, aes(y=Survived,  x=factor(Survived,
+                                                labels=c("Died","Lived"))))
+g <- g + geom_bar(aes(y=..prop.., group=Pclass,
+                      fill=factor(..x.., labels=c("Died","Lived"))))
+g <- g + facet_grid(~factor(Pclass,
+                            labels=c("Upper Class", "Middle Class",
+                                     "Lower Class")))
+g <- g + scale_y_continuous(labels = scales::percent) 
+g <- g + scale_fill_discrete(name="Survival Status")
+g <- g + labs(x="", y = "Percentage",
+              title = "Probabilities of Living Given Socio-Economic Status")
+g <- g + geom_text(
+      aes(label = paste(round((..count../c(216,216,184,184,491,491)), 4)*100, "%", sep = ""), y = ..prop..),  stat= "count",
+      vjust = c(17.25,10,12.75,14.5,6.5,21))
+g
+```
+
+For a simple proof of Bayes Theorem, defined as...
+
+
+<center> <h5> P(A|B) = <u>P(B|A)P(A)</u> <br><p style="margin-left: 60px">P(B)</p></br> </h5> </center>
+
+
+...I can set **P(A) = the probability of a passenger belonging to a defined SES (X)** and **P(B) = the probability of a passenger living**. I can now rewrite the previously defined Theorm using my definitions as:  
+
+<br>
+<center> <h5> P( "X class citizen" | "Lived" ) = <u>P( "Lived" | "X class citizen" ) P( "X class citizen" )</u> <br><p style="margin-left: 250px">P( "Lived" )</p></br> </h5> </center>
+</br>
+
+```{r bayes_part_3}
+total <- nrow(training)
+total_died <- nrow(subset(training, Survived == 0))
+total_lived <- nrow(subset(training, Survived == 1))
+
+#Probability of Living = P(B)
+prob_lived <- total_lived/(total_died + total_lived)
+
+#Probability of being Upper, Middle or Lower class = P(A)
+upper_prob <- as.numeric(table(training$Pclass)[1])/total
+middle_prob <- as.numeric(table(training$Pclass)[2])/total
+lower_prob <- as.numeric(table(training$Pclass)[3])/total
+```
+
+Now that I have found both **P("X class citizen")** (objects upper_prob, middle_prob and lower_prob) and **P("Lived")** (object prob_lived), and I have **P("Lived"|"X class ctiizen")** (objects upper_class, middle_class and lower_class), I can solve for **P("X class citizen"|"Lived")**...
+
+<br>
+<center> <h5> P( "Upper class citizen" | "Lived" ) = <u>upper_class X upper_prob</u> <br><p style="margin-left: 250px">prop_lived</p></br> </h5> </center>
+
+<center> <h5> P( "Middle class citizen" | "Lived" ) = <u>middle_class X middle_prob</u> <br><p style="margin-left: 250px">prop_lived</p></br> </h5> </center>
+
+<center> <h5> P( "Lower class citizen" | "Lived" ) = <u>lower_class X lower_prob</u> <br><p style="margin-left: 250px">prop_lived</p></br> </h5> </center>
+</br>
+
+```{r bayes_part_4}
+#Probability of being an Upper class citizen given a passenger lived
+prob_upper_given_lived <- (upper_class*upper_prob)/prob_lived
+
+#Probability of being a Middle class citizen given a passenger lived
+prob_middle_given_lived <- (middle_class*middle_prob)/prob_lived
+
+#Probability of being a Lower class ctizen given a passenger lived
+prob_lower_given_lived <- (lower_class*lower_prob)/prob_lived
+```
+
+The "shorthand" way of finding these probabilites can be accomplished by dividing the the number of X class passengers that lived by the total number of passengers that lived using the pclass_table.
+
+```{r}
+#"Shorthand" for calculating probability of being a X class citizen using pclass_table
+upper_class_by_total <- pclass_table[2,1]/total_lived*100
+middle_class_by_total <- pclass_table[2,2]/total_lived*100
+lower_class_by_total <- pclass_table[2,3]/total_lived*100
+
+#Showing that the probabilities using Bayes Theorem and pclass_table are equal
+all.equal(upper_class_by_total, prob_upper_given_lived)
+all.equal(middle_class_by_total, prob_middle_given_lived)
+all.equal(lower_class_by_total, prob_lower_given_lived)
+
+```
+
+A graphic illustrating said results.
+
+```{r}
+f <- ggplot(training, aes(y = Pclass,
+                          x = factor(Pclass,labels=c("Upper","Middle","Lower"))))
+f <- f + geom_bar(aes(y=..prop.., group=Survived,
+                      fill = factor(..x.., labels=c("Upper Class","Middle Class","Lower Class"))))
+f <- f + facet_grid(~factor(Survived, labels = c("Died","Lived")))
+f <- f + scale_y_continuous(labels = scales::percent)
+f <- f + scale_fill_discrete(name = "Socio-Economic Status")
+f <- f + labs(x = "", y = "Percentage", title = "Probabilities of Socio-Economic Status Given Died or Survived")
+f <- f + geom_text(
+      aes(label = paste(round((..count../c(549,549,549,342,342,342)), 4)*100, "%", sep = ""), y = ..prop..), stat= "count",
+      vjust = c(24,23,9,16.75,20.75,18.25))
+f
+
+```
+
+Using the same code as above, with a few minor adjustments I can make similar graphs with other qualitative variables, such as the sex of the passenger.
+
+```{r sex/survived}
+#Sex vs. Survived
+a <- ggplot(training, aes(y=Survived,  x=factor(Survived,
+                                                labels=c("Died","Lived"))))
+a <- a + geom_bar(aes(y=..prop.., group=Sex,
+                      fill=factor(..x.., labels=c("Died","Lived"))))
+a <- a + facet_grid(~factor(Sex,
+                            labels=c("Female", "Male")))
+a <- a + scale_y_continuous(labels = scales::percent) 
+a <- a + scale_fill_discrete(name="Survival Status")
+a <- a + labs(x="", y = "Percentage",
+              title = "Probabilities of Living Given Gender")
+a <- a + geom_text(
+      aes(label = paste(round((..count../c(314,314,577,577)), 4)*100, "%", sep = ""), y = ..prop..),  stat= "count",
+      vjust = c(20.5,7,5,22.5))
+a
+```
+
+## 3 Cabin Classification
+
+It seems logical that looking at *where* each passenger was when the Titanic started sinking could provide some insight as to why some lived and others did not. The "Sinking" section on the [Titanic Wikipedia Page](https://en.wikipedia.org/wiki/RMS_Titanic) states that the iceberg was struck at 11:40 pm. Considering the time of night, combined with the likely cold air temperature, I think it is safe to say that most passengers were inside, if not in their rooms sleeping.
+
+Finding out where each passenger was will be a two fold process:
+
+1. Subsetting on the Deck they were on, noted by the letter in the Cabin column.
+2. Subsetting where on that deck they were, noted by the number in the Cabin column.
+
+An important note is that the vast majority of the passengers did not have an entry in the Cabin column. (There aren't any NA's, the entries are not even filled with spaces, they are simply "nothing"). In order to subset these observations, I used the ouput from a "nothing" observation in the logical statement.
+
+After subsetting, summing the number of rows in each subset, *which should equal 891, the total number of observations,* returns 894. A little searching led to finding the duplicates, show below.
+
+
+```{r}
+#Split data on Cabin Letter
+a_class <- training[grep("A", training$Cabin),]
+b_class <- training[grep("B", training$Cabin),]
+c_class <- training[grep("C", training$Cabin),]
+d_class <- training[grep("D", training$Cabin),]
+e_class <- training[grep("E", training$Cabin),]
+f_class <- training[grep("F", training$Cabin),]
+g_class <- training[grep("G", training$Cabin),]
+
+#the "nothing" class
+blank_class <- subset(training, Cabin == training[1,11])
+
+sum(nrow(a_class) + nrow(b_class) + nrow(c_class) + nrow(d_class) +
+          nrow(e_class) + nrow(f_class) + nrow(g_class) + nrow(blank_class))
+
+#Duplicate Cabin Values
+duplicates <- training[c(76,129,700,716),]
+duplicates
+
+#look at passenger id 534
+training[grep("Peter", training$Name),]
+```
+
+To decide which subset to assign these observations too, looking at the Embarked and Ticket columns for those observations in the g_class subset, I can see that everyone in this cabin class embarked from Southampton and had similar ticket
+
+
+```{r}
+table(a_class$Survived)[2]/sum(table(a_class$Survived))
+table(b_class$Survived)[2]/sum(table(b_class$Survived))
+table(c_class$Survived)[2]/sum(table(c_class$Survived))
+table(d_class$Survived)[2]/sum(table(d_class$Survived))
+table(e_class$Survived)[2]/sum(table(e_class$Survived))
+table(f_class$Survived)[2]/sum(table(f_class$Survived))
+table(g_class$Survived)[2]/sum(table(g_class$Survived))
+table(blank_class$Survived)[2]/sum(table(blank_class$Survived))
+
+#Split data on Cabin Room Number
+tCabin_number = grep("[0-9]{2,}", training$Cabin)
+test <- mutate(training, test_column = c(strsplit(as.character(training$Cabin), " ")))
+
+#Parch and Sibsp Analysis
+table(training$Parch, training$Survived)
+
+h <- ggplot(data = training,
+            aes(y = Survived,
+                x = factor(Survived, labels = c("Died","Lived"))))
+h <- h + geom_bar(aes(y = ..prop.., group = Parch,
+                      fill = factor(..x.., labels = c("Died","Lived"))))
+h <- h + facet_grid(~Parch)
+h <- h + scale_y_continuous(labels = scales::percent)
+h <- h + scale_fill_discrete()
+h
+
+d <- ggplot(data = training,
+            aes(y = Survived,
+                x = factor(Survived, labels = c("Died","Lived"))))
+d <- d + geom_bar(aes(y = ..prop.., group = SibSp,
+                      fill = factor(..x.., labels = c("Died","Lived"))))
+d <- d + facet_grid(~SibSp)
+d <- d + scale_y_continuous(labels = scales::percent)
+d <- d + scale_fill_discrete()
+d
+
+```
+
+
+
