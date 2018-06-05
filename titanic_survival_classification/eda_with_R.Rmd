@@ -47,16 +47,23 @@ Looking at the training data froma bird-eye view, there are 891 observations rep
 | Ticket | Ticket Number |
 | Fare | Amount paid for ticket |
 | Cabin | Cabin number |
-| Embarked | The town the passenger boarded the ship from; C = Cherbourg, Q = Queenstown & S = Southhampton |
+| Embarked | The town from which the passenger boarded the ship; C = Cherbourg, Q = Queenstown & S = Southhampton |
 
-First and foremost, by running `str(training)` on the data, it is apparent that the first entries in the Cabin and Embarked columns are empty strings, indicating that the data is probably not perfectly clean (no surprises there). Checking to see where any Null's might be, it becomes clear that there are in fact no nulls, and that these spaces were intentionally left empty. In addition to null values, all the NA's are in the Age column; both of hese will need to be imputed intelligently when the time to create a predictive model comes around.
+First and foremost, by running `str(training)` on the data, it is apparent that the first entries in the Cabin and Embarked columns are empty strings, indicating that the data is probably not perfectly clean (no surprises there). Checking to see where any Null's might be, it becomes clear that there are in fact no nulls, and that these spaces were intentionally left empty. In addition to null values, all the NA's are in the Age, accounting for roughly 20% of the values in that column. Both of these will need to be imputed intelligently when the time to create a predictive model comes around.
+
+In addition to the missing values, it is important to note that while some of the attributes have been read in as continous attibutes such as Pclass, Sibsp and Parch. Since these variables actually represent discrete characteristics of each passenger, changing them to be non-continuous will allow a more representative analysis.
 
 
 ```{r data_overview, include = FALSE}
 str(training)
-```
 
-``` {r}
+#Set classes
+training$PassengerId <- as.factor(training$PassengerId)
+training$Survived <- as.factor(training$Survived)
+training$Pclass <- as.factor(training$Pclass)
+training$SibSp <- as.factor(training$SibSp)
+training$Parch <- as.factor(training$Parch)
+
 # view null count
 nulls <- lapply(training[,1:12], is.null)
 na <- lapply(training[,1:12], is.na)
@@ -66,25 +73,10 @@ na_count <- lapply(na, sum)
 df <- mapply(data.frame, null_count, na_count)
 row.names(df) <- c("Null Count", "NA Count")
 
-knitr::kable(df, caption = "Null & NA Counts")
-```
+knitr::kable(df, caption = "Attribute Null & NA Counts")
 
-## Data Cleaning
-
-All the NA's in the data set are in the Age column. The column is close to 20% NA's so building a model on that variable won't be the best idea.
-```{r data_cleaning}
-#Set classes
-
-training$PassengerId <- as.factor(training$PassengerId)
-training$Survived <- as.factor(training$Survived)
-training$Pclass <- as.factor(training$Pclass)
-training$SibSp <- as.factor(training$SibSp)
-training$Parch <- as.factor(training$Parch)
-
-
-
-#Percent of Age attribute that is NA
-paste(round(sum(is.na(training$Age))/length(training$Age)*100, digits = 2), "%", sep = "")
+#Percent of Age variable that is NA
+age_percent_na <- paste(round(sum(is.na(training$Age))/length(training$Age)*100, digits = 2), "%", sep = "")
 ```
 
 ## 2 Bayesian Survival

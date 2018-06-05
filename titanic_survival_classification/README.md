@@ -4,7 +4,7 @@
 
 In an effort to strengthen my programming knowledge across multiple languages, I am going to separate this analysis into two main parts:
 
-1. **Exploratory Data Analysis with R**
+1. **[Exploratory Data Analysis with R](eda_with_r.pdf)**
 
     * This will "tell the story" of the sinking of the Titanic using descriptive analytics on the training data, as well as provide some Bayes' Theorem proofs.
 
