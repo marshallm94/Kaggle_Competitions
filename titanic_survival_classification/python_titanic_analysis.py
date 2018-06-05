@@ -66,7 +66,7 @@ def score_model(model, x_train, y_train, cv=5):
 if __name__ == "__main__":
 
     # data cleaning
-    df = pd.read_csv("/Users/marsh/data_science_projects/kaggle_titanic_ml/titanic_train.csv")
+    df = pd.read_csv("/Users/marsh/data_science_projects/Kaggle_Competitions/titanic_survival_classification/ titanic_train.csv")
     X, y = clean_data(df)
 
     standardizer = StandardScaler()
