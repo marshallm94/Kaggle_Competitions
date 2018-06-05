@@ -1,7 +1,7 @@
 ---
 title: "An Illustrative Look"
-output: html_document
-author: Marshall McQuillen
+author: "Marshall McQuillen"
+output: pdf_document
 ---
 ## Guiding question
 Which passengers will survive the sinking of the Titanic?
@@ -13,15 +13,16 @@ Which passengers will survive the sinking of the Titanic?
       
 
 ```{r import_data}
-setwd("/Users/marsh/data_science_projects/kaggle_titanic_ml/")
-training <- read.csv('/Users/marsh/data_science_projects/kaggle_titanic_ml/titanic_train.csv')
-testing <- read.csv("/Users/marsh/data_science_projects/kaggle_titanic_ml//titanic_test.csv")
+setwd("/Users/marsh/data_science_projects/Kaggle_Competitions/titanic_survival_classification/")
+training <- read.csv('/Users/marsh/data_science_projects/Kaggle_Competitions/titanic_survival_classification/titanic_train.csv')
+testing <- read.csv("/Users/marsh/data_science_projects/Kaggle_Competitions/titanic_survival_classification/titanic_test.csv")
 ```
 
 ```{r install/load_packages}
+# install.packages("tidyverse")
 suppressPackageStartupMessages(library(ggplot2))
 suppressPackageStartupMessages(library(dplyr))
-suppressPackageStartupMessages(library(plotly))
+# suppressPackageStartupMessages(library(plotly))
 ```
 ## Data Cleaning
 
@@ -92,7 +93,7 @@ g
 For a simple proof of Bayes Theorem, defined as...
 
 
-<center> <h5> P(A|B) = <u>P(B|A)P(A)</u> <br><p style="margin-left: 60px">P(B)</p></br> </h5> </center>
+$$P(A|B)~=~\frac{P(B|A)P(A)}{P(B)}$$
 
 
 ...I can set **P(A) = the probability of a passenger belonging to a defined SES (X)** and **P(B) = the probability of a passenger living**. I can now rewrite the previously defined Theorm using my definitions as:  
