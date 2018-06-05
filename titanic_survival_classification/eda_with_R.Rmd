@@ -1,9 +1,14 @@
 ---
-title: "An Illustrative Look"
+title: "An Exploratory Look Aboard the Titanic"
 author: "Marshall McQuillen"
 output: pdf_document
 ---
-## Guiding question
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE, include = TRUE)
+```
+
+## Guiding Question
 
 Which passengers will survive the sinking of the Titanic?
 
@@ -13,7 +18,7 @@ Which passengers will survive the sinking of the Titanic?
 2. What charactersistics make someone more likely to survive?
 3. How do different characteristics of passengers vary with one another?
 
-```{r import_data, include=FALSE}
+```{r import_data}
 setwd("/Users/marsh/data_science_projects/Kaggle_Competitions/titanic_survival_classification/")
 training <- read.csv('/Users/marsh/data_science_projects/Kaggle_Competitions/titanic_survival_classification/titanic_train.csv')
 ```
@@ -22,26 +27,46 @@ training <- read.csv('/Users/marsh/data_science_projects/Kaggle_Competitions/tit
 # install.packages("tidyverse")
 suppressPackageStartupMessages(library(ggplot2))
 suppressPackageStartupMessages(library(dplyr))
+suppressPackageStartupMessages(library(knitr))
 ```
 
 ## Data Overview
 
-Looking at the training data froma bird-eye view, there are 891 observations representing passengers and 12 variables. First and foremost, we can see in the Cabin and Embarked columns that the first entry is an empty string, indicating that our data is probably not perfectly clean (no surprises there). Checking to see where any Null's might be, it becomes clear that there are in fact no nulls. This illustrates the difference between a 
+Looking at the training data froma bird-eye view, there are 891 observations representing passengers and 12 variables. Since some of the variable name are a little cryptic, an description for each is provided below.
 
-| Test 1 | Test 2 | Test 3 |
-| - | - | - |
-| 1 | 2 | 3 | 
+| Variable Name | Description |
+| ----------------------------------------- | ----------------------------------------- |
+| PassengerId | Unique identifier for each passenger |
+| Survived | Binary; 1 = Survied & 0 = Died |
+| Pclass | Socio-economic status; 1 = Upper, 2 = Middle & 3 = Lower |
+| Name | Passenger Name |
+| Sex | Male or Female |
+| Age | Passenger Age |
+| SibSp | Number of siblings or spouse aboard ship |
+| Parch | Number of parents or children aboard ship |
+| Ticket | Ticket Number |
+| Fare | Amount paid for ticket |
+| Cabin | Cabin number |
+| Embarked | The town the passenger boarded the ship from; C = Cherbourg, Q = Queenstown & S = Southhampton |
 
-```{r data_overview}
+First and foremost, by running `str(training)` on the data, it is apparent that the first entries in the Cabin and Embarked columns are empty strings, indicating that the data is probably not perfectly clean (no surprises there). Checking to see where any Null's might be, it becomes clear that there are in fact no nulls, and that these spaces were intentionally left empty. In addition to null values, all the NA's are in the Age column; both of hese will need to be imputed intelligently when the time to create a predictive model comes around.
+
+
+```{r data_overview, include = FALSE}
 str(training)
+```
 
+``` {r}
 # view null count
 nulls <- lapply(training[,1:12], is.null)
-as.data.frame(lapply(nulls, sum))
+na <- lapply(training[,1:12], is.na)
+null_count <- lapply(nulls, sum)
+na_count <- lapply(na, sum)
 
-# view NA count
-na_count <- lapply(training[,1:12], is.na)
-as.data.frame(lapply(na_count, sum))
+df <- mapply(data.frame, null_count, na_count)
+row.names(df) <- c("Null Count", "NA Count")
+
+knitr::kable(df, caption = "Null & NA Counts")
 ```
 
 ## Data Cleaning
