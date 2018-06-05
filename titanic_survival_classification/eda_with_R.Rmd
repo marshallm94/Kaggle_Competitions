@@ -98,9 +98,7 @@ $$P(A|B)~=~\frac{P(B|A)P(A)}{P(B)}$$
 
 ...I can set **P(A) = the probability of a passenger belonging to a defined SES (X)** and **P(B) = the probability of a passenger living**. I can now rewrite the previously defined Theorm using my definitions as:  
 
-<br>
-<center> <h5> P( "X class citizen" | "Lived" ) = <u>P( "Lived" | "X class citizen" ) P( "X class citizen" )</u> <br><p style="margin-left: 250px">P( "Lived" )</p></br> </h5> </center>
-</br>
+$$P(~"X~class~citizen"~|~"Lived"~)~=~\frac{P(~"Lived"~|~"X~class~citizen"~)~P(~"X~class~citizen"~)}{(~"Lived"~)}$$
 
 ```{r bayes_part_3}
 total <- nrow(training)
