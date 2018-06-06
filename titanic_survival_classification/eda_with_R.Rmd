@@ -51,11 +51,10 @@ Looking at the training data froma bird-eye view, there are 891 observations rep
 
 First and foremost, by running `str(training)` on the data, it is apparent that the first entries in the Cabin and Embarked columns are empty strings, indicating that the data is probably not perfectly clean (no surprises there). Checking to see where any Null's might be, it becomes clear that there are in fact no nulls, and that these spaces were intentionally left empty. In addition to null values, all the NA's are in the Age, accounting for roughly 20% of the values in that column. Both of these will need to be imputed intelligently when the time to create a predictive model comes around.
 
-In addition to the missing values, it is important to note that while some of the attributes have been read in as continous attibutes such as Pclass, Sibsp and Parch. Since these variables actually represent discrete characteristics of each passenger, changing them to be non-continuous will allow a more representative analysis.
+In addition to the missing values, it is important to note that some of the discrete attributes have been read in as continous variabes such as Pclass, Sibsp and Parch. Since these variables actually represent discrete characteristics of each passenger, changing them to be non-continuous will allow a more representative analysis.
 
-
-```{r data_overview, include = FALSE}
-str(training)
+```{r data_overview}
+# str(training)
 
 #Set classes
 training$PassengerId <- as.factor(training$PassengerId)
@@ -73,7 +72,11 @@ na_count <- lapply(na, sum)
 df <- mapply(data.frame, null_count, na_count)
 row.names(df) <- c("Null Count", "NA Count")
 
-knitr::kable(df, caption = "Attribute Null & NA Counts")
+df1 <- df[,1:6]
+df2 <- df[,7:12]
+
+knitr::kable(df1, caption = "Attribute Null & NA Counts")
+knitr::kable(df2, caption = "Attribute Null & NA Counts (continued)")
 
 #Percent of Age variable that is NA
 age_percent_na <- paste(round(sum(is.na(training$Age))/length(training$Age)*100, digits = 2), "%", sep = "")
@@ -83,29 +86,33 @@ age_percent_na <- paste(round(sum(is.na(training$Age))/length(training$Age)*100,
 
 ### 2.2 Does Money Sink or Swim?
 
-#### Illustrating Bayes Theorem with Survival Rates and Socio-Economic Status
+By creating a table with the Pclass (which, recall refers to the socioeconomic status (SES) of the passenger) and Survived variables, I can get a good sense of the number of passengers that lived and died, based on their SES. Simple summation and division returns the probabilites of a passenger living given their respective SES
 
-By creating a table with the Pclass and Survived variables, I can get a good sense of the number of passengers that lived and died, based on their Socio-Economic Status (SES). Simple summation and division returns the probabilites of a passenger living given their respective SES.
-
-```{r bayes_part_1}
+```{r pclass_vs_survived}
 #Probability of living by socio-economic status
 pclass_table <- with(training, table(Survived, Pclass))
 upper_class <- pclass_table[2,1]/sum(pclass_table[,1])*100
 middle_class <- pclass_table[2,2]/sum(pclass_table[,2])*100
 lower_class <- pclass_table[2,3]/sum(pclass_table[,3])*100
 
-pclass_table
+row.names(pclass_table) <- c('Died','Survived')
+colnames(pclass_table) <- c('Upper','Middle','Lower')
+knitr::kable(pclass_table, caption = "Survival Counts by SES")
 #Probability of living given Upper Class
-paste(round(upper_class, digits = 2), "%", sep = "")
+upper_sr <- paste(round(upper_class, digits = 2), "%", sep = "")
 
 #Probability of living given Middle Class
-paste(round(middle_class, digits = 2), "%", sep = "")
+middle_sr <- paste(round(middle_class, digits = 2), "%", sep = "")
 
 #Probability of living given Lower Class
-paste(round(lower_class, digits = 2), "%", sep = "")
+lower_sr <- paste(round(lower_class, digits = 2), "%", sep = "")
+
+sr_table <- data.frame(c(upper_sr, middle_sr, lower_sr), row.names = c("Upper Class",'Middle Class','Lower Class'))
+colnames(sr_table) <- 'Probability of Surviving'
+knitr::kable(sr_table, caption = "Survival Rates by SES", align = 'r')
 ```
 
-The same information can be displayed visually as follows.
+This same information is displayed visually below.
 
 ```{r bayes_part_2}
 g <- ggplot(training, aes(y=Survived,  x=factor(Survived,
@@ -125,15 +132,23 @@ g <- g + geom_text(
 g
 ```
 
-For a simple proof of Bayes Theorem, defined as...
+#### Illustrating Bayes Theorem with Survival Rates and Socio-Economic Status
 
+This type of classification problem creates a great opportunity to illustrate Bayes' Theorem. Recall that Bayes Theorem is defined as:
 
 $$P(A|B)~=~\frac{P(B|A)P(A)}{P(B)}$$
+
 
 
 ...I can set **P(A) = the probability of a passenger belonging to a defined SES (X)** and **P(B) = the probability of a passenger living**. I can now rewrite the previously defined Theorm using my definitions as:  
 
 $$P(~"X~class~citizen"~|~"Lived"~)~=~\frac{P(~"Lived"~|~"X~class~citizen"~)~P(~"X~class~citizen"~)}{(~"Lived"~)}$$
+
+The same information can be displayed visually as follows.
+
+
+
+
 
 ```{r bayes_part_3}
 total <- nrow(training)
