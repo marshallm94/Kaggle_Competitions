@@ -30,7 +30,7 @@ suppressPackageStartupMessages(library(dplyr))
 suppressPackageStartupMessages(library(knitr))
 ```
 
-## Data Overview
+## 1 Data Overview
 
 Looking at the training data froma bird-eye view, there are 891 observations representing passengers and 12 variables. Since some of the variable name are a little cryptic, an description for each is provided below.
 
@@ -84,35 +84,39 @@ age_percent_na <- paste(round(sum(is.na(training$Age))/length(training$Age)*100,
 
 ## 2 Bayesian Survival
 
-### 2.2 Does Money Sink or Swim?
+### 2.1 Does Money Sink or Swim?
 
-By creating a table with the Pclass (which, recall refers to the socioeconomic status (SES) of the passenger) and Survived variables, I can get a good sense of the number of passengers that lived and died, based on their SES. Simple summation and division returns the probabilites of a passenger living given their respective SES
+By creating a table with the Pclass (which refers to the socioeconomic status (SES) of the passenger) and Survived variables, I can get a good sense of the number of passengers that lived and died, based on their SES. Simple summation and division returns the probabilites of a passenger living given their respective SES
 
 ```{r pclass_vs_survived}
 #Probability of living by socio-economic status
 pclass_table <- with(training, table(Survived, Pclass))
-upper_class <- pclass_table[2,1]/sum(pclass_table[,1])*100
-middle_class <- pclass_table[2,2]/sum(pclass_table[,2])*100
-lower_class <- pclass_table[2,3]/sum(pclass_table[,3])*100
+upper_class <- pclass_table[2,1]/sum(pclass_table[,1])
+middle_class <- pclass_table[2,2]/sum(pclass_table[,2])
+lower_class <- pclass_table[2,3]/sum(pclass_table[,3])
 
 row.names(pclass_table) <- c('Died','Survived')
 colnames(pclass_table) <- c('Upper','Middle','Lower')
 knitr::kable(pclass_table, caption = "Survival Counts by SES")
 #Probability of living given Upper Class
-upper_sr <- paste(round(upper_class, digits = 2), "%", sep = "")
+upper_sr <- paste(round(upper_class*100, digits = 2), "%", sep = "")
 
 #Probability of living given Middle Class
-middle_sr <- paste(round(middle_class, digits = 2), "%", sep = "")
+middle_sr <- paste(round(middle_class*100, digits = 2), "%", sep = "")
 
 #Probability of living given Lower Class
-lower_sr <- paste(round(lower_class, digits = 2), "%", sep = "")
+lower_sr <- paste(round(lower_class*100, digits = 2), "%", sep = "")
 
 sr_table <- data.frame(c(upper_sr, middle_sr, lower_sr), row.names = c("Upper Class",'Middle Class','Lower Class'))
-colnames(sr_table) <- 'Probability of Surviving'
+colnames(sr_table) <- 'Probability of Living'
 knitr::kable(sr_table, caption = "Survival Rates by SES", align = 'r')
 ```
 
+\pagebreak
+
 This same information is displayed visually below.
+
+\hfill
 
 ```{r bayes_part_2}
 g <- ggplot(training, aes(y=Survived,  x=factor(Survived,
@@ -132,47 +136,66 @@ g <- g + geom_text(
 g
 ```
 
-#### Illustrating Bayes Theorem with Survival Rates and Socio-Economic Status
+#### 2.1.1 Illustrating Bayes Theorem with Survival Rates and Socioeconomic Status
 
 This type of classification problem creates a great opportunity to illustrate Bayes' Theorem. Recall that Bayes Theorem is defined as:
 
 $$P(A|B)~=~\frac{P(B|A)P(A)}{P(B)}$$
 
+where: 
 
+* $P(A|B)$ = Posterior
+* $P(B|A)$ = Likelihood
+* $P(A)$ = Prior
+* $P(B)$ = Normalizing Constant.
 
-...I can set **P(A) = the probability of a passenger belonging to a defined SES (X)** and **P(B) = the probability of a passenger living**. I can now rewrite the previously defined Theorm using my definitions as:  
+The equation above can be rewritten to better match the problem context as:
 
-$$P(~"X~class~citizen"~|~"Lived"~)~=~\frac{P(~"Lived"~|~"X~class~citizen"~)~P(~"X~class~citizen"~)}{(~"Lived"~)}$$
+$$P(~"X~class~citizen"~|~"Lived"~)~=~\frac{P(~"Lived"~|~"X~class~citizen"~)~P(~"X~class~citizen"~)}{P(~"Lived"~)}$$
 
-The same information can be displayed visually as follows.
+where:
 
+* $P(~"X~class~citizen"~|~"Lived"~)$ = Posterior
+* $P(~"Lived"~|~"X~class~citizen"~)$ = Likelihood
+* $P(~"X~class~citizen"~)$ = Prior
+* $P(~"Lived"~)$ = Normalizing Constant.
 
+$P(~"Lived"~)$, the Normalizing Constant, will be the probability of living, *regardless of SES.* This could be broken out into three terms,
 
+$$P(~"Lived"~|~"Upper~class~citizen"~)~+~P(~"Lived"~|~"Middle~class~citizen"~)~+~P(~"Lived"~|~"Lower~class~citizen"~)$$
 
+however it is far easier to calculate the proportion of those that lived over everyone that was aboard the ship. This comes out to be 38.38%.
+
+The final term needed to complete the right hand side of the equation, the Prior, is simply the proportion of those on board that were Upper, Middle or Lower class. These come out to be 24.24%, 20.65% and 55.11%, respectively, shown in the table below.
 
 ```{r bayes_part_3}
 total <- nrow(training)
 total_died <- nrow(subset(training, Survived == 0))
 total_lived <- nrow(subset(training, Survived == 1))
 
-#Probability of Living = P(B)
-prob_lived <- total_lived/(total_died + total_lived)
+prob_lived <- total_lived / total
 
-#Probability of being Upper, Middle or Lower class = P(A)
-upper_prob <- as.numeric(table(training$Pclass)[1])/total
-middle_prob <- as.numeric(table(training$Pclass)[2])/total
-lower_prob <- as.numeric(table(training$Pclass)[3])/total
+upper_prob <- as.numeric(table(training$Pclass)[1])/nrow(training)
+middle_prob <- as.numeric(table(training$Pclass)[2])/nrow(training)
+lower_prob <- as.numeric(table(training$Pclass)[3])/nrow(training)
+
+upper_prob_str <- paste(round(upper_prob*100, digits = 2), "%", sep = "")
+middle_prob_str <- paste(round(middle_prob*100, digits = 2), "%", sep = "")
+lower_prob_str <- paste(round(lower_prob*100, digits = 2), "%", sep = "")
+
+ses_df <- data.frame(c(upper_prob_str, middle_prob_str, lower_prob_str), row.names = c("Upper Class",'Middle Class','Lower Class'))
+colnames(ses_df) <- "Probability of Being X Class"
+knitr::kable(ses_df, caption = "Socioeconomic Status Proportions Aboard the Titanic", align = 'r')
 ```
 
-Now that I have found both **P("X class citizen")** (objects upper_prob, middle_prob and lower_prob) and **P("Lived")** (object prob_lived), and I have **P("Lived"|"X class ctiizen")** (objects upper_class, middle_class and lower_class), I can solve for **P("X class citizen"|"Lived")**...
+Now it is simply a matter of defining three different equations for each of the three possible socioeconomic status', and substituting in the corresponding numbers (Note that in the above percentages I rounded to two decimal places, however when calculating the final probability it is paramount that the entire number is used).
 
-<br>
-<center> <h5> P( "Upper class citizen" | "Lived" ) = <u>upper_class X upper_prob</u> <br><p style="margin-left: 250px">prop_lived</p></br> </h5> </center>
+$$P(~"Upper~class~citizen"~|~"Lived"~)~=~\frac{0.6296296\cdot0.2424242
+}{0.3838384}~=~0.3976608~=~39.77\%$$
 
-<center> <h5> P( "Middle class citizen" | "Lived" ) = <u>middle_class X middle_prob</u> <br><p style="margin-left: 250px">prop_lived</p></br> </h5> </center>
+$$P(~"Middle~class~citizen"~|~"Lived"~)~=~\frac{0.4728261\cdot0.2065095}{0.3838384}~=~0.254386~=~25.44\%$$
 
-<center> <h5> P( "Lower class citizen" | "Lived" ) = <u>lower_class X lower_prob</u> <br><p style="margin-left: 250px">prop_lived</p></br> </h5> </center>
-</br>
+$$P(~"Lower~class~citizen"~|~"Lived"~)~=~\frac{0.2423625\cdot0.5510662}{0.3838384}~=~0.3479532~=~34.8\%$$
 
 ```{r bayes_part_4}
 #Probability of being an Upper class citizen given a passenger lived
@@ -185,22 +208,11 @@ prob_middle_given_lived <- (middle_class*middle_prob)/prob_lived
 prob_lower_given_lived <- (lower_class*lower_prob)/prob_lived
 ```
 
-The "shorthand" way of finding these probabilites can be accomplished by dividing the the number of X class passengers that lived by the total number of passengers that lived using the pclass_table.
+\pagebreak
 
-```{r}
-#"Shorthand" for calculating probability of being a X class citizen using pclass_table
-upper_class_by_total <- pclass_table[2,1]/total_lived*100
-middle_class_by_total <- pclass_table[2,2]/total_lived*100
-lower_class_by_total <- pclass_table[2,3]/total_lived*100
+This can be double checked visually by dividing the passengers into those that lived and died, and then, for each of those groups, plotting the percentage that were Upper, Middle and Lower class. Low and behold, Bayes is right.
 
-#Showing that the probabilities using Bayes Theorem and pclass_table are equal
-all.equal(upper_class_by_total, prob_upper_given_lived)
-all.equal(middle_class_by_total, prob_middle_given_lived)
-all.equal(lower_class_by_total, prob_lower_given_lived)
-
-```
-
-A graphic illustrating said results.
+\hfill
 
 ```{r}
 f <- ggplot(training, aes(y = Pclass,
@@ -210,7 +222,7 @@ f <- f + geom_bar(aes(y=..prop.., group=Survived,
 f <- f + facet_grid(~factor(Survived, labels = c("Died","Lived")))
 f <- f + scale_y_continuous(labels = scales::percent)
 f <- f + scale_fill_discrete(name = "Socio-Economic Status")
-f <- f + labs(x = "", y = "Percentage", title = "Probabilities of Socio-Economic Status Given Died or Survived")
+f <- f + labs(x = "", y = "Percentage", title = "Probabilities of Socio-Economic Status Given Lived or Died")
 f <- f + geom_text(
       aes(label = paste(round((..count../c(549,549,549,342,342,342)), 4)*100, "%", sep = ""), y = ..prop..), stat= "count",
       vjust = c(24,23,9,16.75,20.75,18.25))
