@@ -6,7 +6,7 @@ In an effort to strengthen my programming knowledge across multiple languages, I
 
 1. **[Exploratory Data Analysis with R](eda_with_R.pdf)**
 
-    * This will "tell the story" of the sinking of the Titanic using descriptive analytics on the training data, as well as provide some Bayes' Theorem proofs.
+    * This will "tell the story" of the sinking of the Titanic using descriptive analytics on the training data, as well as provide some Bayes' Theorem and logistic regression interpretations using the data.
 
 2. **Machine Learning with Python**
 

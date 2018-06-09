@@ -1,5 +1,5 @@
 ---
-title: "An Exploratory Look Aboard the Titanic"
+title: "An Statistical Walk Aboard the Titanic"
 author: "Marshall McQuillen"
 output: pdf_document
 ---
@@ -10,13 +10,13 @@ knitr::opts_chunk$set(echo = FALSE, include = TRUE)
 
 ## Guiding Question
 
-Which passengers will survive the sinking of the Titanic?
+What characteristics separate those who survived from those who died?
 
 ## Secondary Questions
 
-1. What characteristics separate those who survived from those who died?
-2. What charactersistics make someone more likely to survive?
-3. How do different characteristics of passengers vary with one another?
+1. Does Socioeconomic Status have an affect on Survival?
+2. How do Gender and Age affect Survival Rates?
+3. Does where a passenger was staying aboard the Titanic affect their probability of Surviviing?
 
 ```{r import_data}
 setwd("/Users/marsh/data_science_projects/Kaggle_Competitions/titanic_survival_classification/")
@@ -82,7 +82,7 @@ knitr::kable(df2, caption = "Attribute Null & NA Counts (continued)")
 age_percent_na <- paste(round(sum(is.na(training$Age))/length(training$Age)*100, digits = 2), "%", sep = "")
 ```
 
-## 2 Characteristics that Separate the Living and the Dead
+## 2 Does Socioeconomic Status have an affect on Survival? 
 
 ### 2.1 Does Money Sink or Swim?
 
@@ -127,7 +127,7 @@ g <- g + facet_grid(~factor(Pclass,
                             labels=c("Upper Class", "Middle Class",
                                      "Lower Class")))
 g <- g + scale_y_continuous(labels = scales::percent) 
-g <- g + scale_fill_discrete(name="Survival Status")
+g <- g + scale_fill_discrete(name="Survival Status", guide = FALSE)
 g <- g + labs(x="", y = "Percentage",
               title = "Probabilities of Living Given Socio-Economic Status")
 g <- g + geom_text(
@@ -221,7 +221,7 @@ f <- f + geom_bar(aes(y=..prop.., group=Survived,
                       fill = factor(..x.., labels=c("Upper Class","Middle Class","Lower Class"))))
 f <- f + facet_grid(~factor(Survived, labels = c("Died","Lived")))
 f <- f + scale_y_continuous(labels = scales::percent)
-f <- f + scale_fill_discrete(name = "Socio-Economic Status")
+f <- f + scale_fill_discrete(name = "Socio-Economic Status", guide = FALSE)
 f <- f + labs(x = "", y = "Percentage", title = "Probabilities of Socio-Economic Status Given Lived or Died")
 f <- f + geom_text(
       aes(label = paste(round((..count../c(549,549,549,342,342,342)), 4)*100, "%", sep = ""), y = ..prop..), stat= "count",
@@ -230,11 +230,35 @@ f
 
 ```
 
-\hfill
+\pagebreak
 
-## 2.2 Who do you save?
+## 3 How do Gender and Age affect Survival Rates?
 
-When the data is explored a little further, Women and children appears to be the answer to that question. Looking at th two plots below, it is apparent that given that a passenber was Female, her probability of Surviving was roughly 74.2%. On the other hand, if a passenger was Male, he had over an 80% change of dying. 
+A quick overview of the Gender and Age variables are shown below, demonstrating that most people aboard were men and between 20 - 40 years old.
+
+```{r gender summary}
+props <- with(training, paste(round(table(Sex)/nrow(training)*100, 2), "%", sep = ""))
+df <- data.frame(props, row.names = c('Female','Male'))
+knitr::kable(df, col.names = "Proportion", align = 'r', caption = 'Gender Proportions')
+```
+
+```{r age_histogram}
+options(warn = -1)
+plt <- ggplot(training, aes(Age))
+plt <- plt + geom_histogram(aes(y = ..density..),
+                            col = 'blue',
+                            fill = 'blue',
+                            alpha = 0.2)
+plt <- plt + geom_density(col=2)
+plt <- plt + labs(x = 'Age', y = 'Density', title = 'Age Histogram')
+suppressMessages(print(plt))
+```
+
+### Gender
+
+Looking at the two plots on the following page, it is apparent that given that a passenber was Female, her probability of Surviving was 74.2%. On the other hand, if a passenger was Male, he had over an 80% chance of dying. 
+
+The second plot shows the probabilities of a passenger being Male or Female, conditioned on whether they survived the sinking of the ship or not. Once again, there is a vast gender divide of the passengers that died, with 85% of all passenger that died being Male. Given that a passenger survived, there is more than double the chance that she was Female than Male.
 
 ```{r sex vs survived}
 #Sex vs. Survived
@@ -245,9 +269,9 @@ a <- a + geom_bar(aes(y=..prop.., group=Sex,
 a <- a + facet_grid(~factor(Sex,
                             labels=c("Female", "Male")))
 a <- a + scale_y_continuous(labels = scales::percent) 
-a <- a + scale_fill_discrete(name="Survival Status")
+a <- a + scale_fill_discrete(name="Survival Status", guide = FALSE)
 a <- a + labs(x="", y = "Percentage",
-              title = "Probabilities of Living Given Gender")
+              title = "Probabilities of Surviving Given Gender")
 a <- a + geom_text(
       aes(label = paste(round((..count../c(314,314,577,577)), 4)*100, "%", sep = ""), y = ..prop..),  stat= "count",
       vjust = c(21,7,5,23))
@@ -274,9 +298,9 @@ a <- a + facet_grid(~factor(Survived,
                             )
                     )
 a <- a + scale_y_continuous(labels = scales::percent) 
-a <- a + scale_fill_discrete(name='Sex')
+a <- a + scale_fill_discrete(name='Sex', guide = FALSE)
 a <- a + labs(x="", y = "Percentage",
-              title = "Gender Proportions by Survival Status")
+              title = "Gender Probabilities Conditioned on Survival Status")
 a <- a + geom_text(aes(
     label = paste(round((..count../c(549,549,342,342)), 4)*100, "%", sep = ""),
     y = ..prop..),
@@ -285,8 +309,69 @@ a <- a + geom_text(aes(
 a
 ```
 
-```{r}
+### Interpretting Logistic Regression Using Passenger Age
 
+**If the goal of a model is a low error rate,** using only one variable is rarely a good idea. However, if interpretability and inference are the goal, using linear or logistic regression can provide unique insight into our data. In order to see how a passenger's age affects their chance of surviving the sinking of the ship, I decided to create a new column that puts passengers into certain bins, based on their age. I created 7 different bins, outlined in the table below, which separates each age group into those who lived and those who died.
+
+```{r}
+training$age_bin <- cut(training$Age, c(0,10,20,30,40,50,60,100), labels = c('0-10','11-20','21-30','31-40','41-50','50-60','Over 60'))
+tab <- with(training, table(Survived, age_bin))
+rownames(tab) <- c('Died','Survived')
+knitr::kable(tab, caption = 'Surival Counts by Age Group')
+```
+
+When a general linear model is fit using only this binned column, R one-hot-encodes the column, effectively creating a new column for each age group.The reason for the separation of the continuous age variable into bins becomes clear when the equation, with problem context accounted for, is expressed below.
+
+$$Log~Odds(Surviving)~=~\beta_1~(Age~0-10)~+~\beta_2~(Age~11-20)~+~\beta_3~(Age~21-30)~...~etc.$$
+
+Since each coefficient represents a change in the log odds of survival with a one unit change in its associated variable, **and only one variable will be non-zero (if a passenger is in the age group 0 to 10, they aren't going to be in any other age group)**, the log odds of a passenger in age group $j$ will be equal to coefficient $\beta_j$. 
+
+$$Log~Odds(Surviving)~=~\beta_1~(1)~+~\beta_2~(0)~+~\beta_3~(0)~+~\beta_4~(0)~...~etc.$$
+
+Removing all 0 terms from the equation, the formula simplifies to: 
+
+$$Log~Odds(Surviving)_j~=~\beta_j$$
+A little math will show us the probability that a passenger survives, given a specific age group. By exponentiating the log odds, the odds are returned, which can the be divided by one plus itself (equation below) to return the probability.
+
+$$P~=~\frac{Odds}{1~+~Odds}$$
+
+This is visually confirmed with a multi-faceted plot shown on the following page, in addition to taking the number of Survivors for each age group and dividing by the total number of passengers in that age group from the Survival Counts by Age Group Table.
+
+\pagebreak
+
+```{r log_odds}
+fit <- glm(Survived ~ age_bin - 1, training, family = 'binomial')
+log_odds_est <- summary(fit)$coef
+display_tab <- log_odds_est
+rownames(display_tab) <- c('0 - 10','11 - 20','21 - 30','31 - 40','41 - 50','50 - 60','Over 60')
+colnames(display_tab) <- c('Coefficient','1','2','3')
+knitr::kable(display_tab[,1], col.names = 'Coefficient', caption = "Logistic Regression Age Group Coefficients")
+
+log_odds_to_prob <- function(log_odds) {
+    odds <- exp(log_odds)
+    prob <- odds / (1 + odds)
+    return(prob)
+}
+probs <- log_odds_to_prob(log_odds_est[,1])
+names <- c('0 - 10','11 - 20','21 - 30','31 - 40','41 - 50','50 - 60','Over 60')
+df <- data.frame(names, paste(round(probs*100, 2), "%", sep = ""))
+rownames(df) <- 1:7
+knitr::kable(df, col.names = c("Age Group",'Probability of Surviving'), caption = "Probability of Surviving given Age Group", align = 'r')
+```
+
+
+
+```{r logistic_regression}
+a <- ggplot(training, aes(y=Survived,  x=factor(Survived,
+                                                labels=c("Died","Lived"))))
+a <- a + geom_bar(aes(y=..prop.., group=age_bin,
+                      fill=factor(..x..)))
+a <- a + facet_grid(~factor(age_bin))
+a <- a + scale_y_continuous(labels = scales::percent) 
+a <- a + scale_fill_discrete(name="Survival Status", guide = FALSE)
+a <- a + labs(x="", y = "Percentage",
+              title = "Survival Probabilites by Age Group")
+a
 ```
 
 ## 4 Cabin Classification
