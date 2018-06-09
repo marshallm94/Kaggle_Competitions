@@ -82,7 +82,7 @@ knitr::kable(df2, caption = "Attribute Null & NA Counts (continued)")
 age_percent_na <- paste(round(sum(is.na(training$Age))/length(training$Age)*100, digits = 2), "%", sep = "")
 ```
 
-## 2 Bayesian Survival
+## 2 Characteristics that Separate the Living and the Dead
 
 ### 2.1 Does Money Sink or Swim?
 
@@ -118,7 +118,7 @@ This same information is displayed visually below.
 
 \hfill
 
-```{r bayes_part_2}
+```{r bayes_part_1}
 g <- ggplot(training, aes(y=Survived,  x=factor(Survived,
                                                 labels=c("Died","Lived"))))
 g <- g + geom_bar(aes(y=..prop.., group=Pclass,
@@ -168,7 +168,7 @@ however it is far easier to calculate the proportion of those that lived over ev
 
 The final term needed to complete the right hand side of the equation, the Prior, is simply the proportion of those on board that were Upper, Middle or Lower class. These come out to be 24.24%, 20.65% and 55.11%, respectively, shown in the table below.
 
-```{r bayes_part_3}
+```{r bayes_part_2}
 total <- nrow(training)
 total_died <- nrow(subset(training, Survived == 0))
 total_lived <- nrow(subset(training, Survived == 1))
@@ -197,7 +197,7 @@ $$P(~"Middle~class~citizen"~|~"Lived"~)~=~\frac{0.4728261\cdot0.2065095}{0.38383
 
 $$P(~"Lower~class~citizen"~|~"Lived"~)~=~\frac{0.2423625\cdot0.5510662}{0.3838384}~=~0.3479532~=~34.8\%$$
 
-```{r bayes_part_4}
+```{r bayes_part_3}
 #Probability of being an Upper class citizen given a passenger lived
 prob_upper_given_lived <- (upper_class*upper_prob)/prob_lived
 
@@ -210,11 +210,11 @@ prob_lower_given_lived <- (lower_class*lower_prob)/prob_lived
 
 \pagebreak
 
-This can be double checked visually by dividing the passengers into those that lived and died, and then, for each of those groups, plotting the percentage that were Upper, Middle and Lower class. Low and behold, Bayes is right.
+This can be double checked visually by dividing the passengers into those that lived and died, and then, for each of those groups, plotting the percentage that were Upper, Middle and Lower class. Low and behold, Bayes was right.
 
 \hfill
 
-```{r}
+```{r bayes_part_4}
 f <- ggplot(training, aes(y = Pclass,
                           x = factor(Pclass,labels=c("Upper","Middle","Lower"))))
 f <- f + geom_bar(aes(y=..prop.., group=Survived,
@@ -230,9 +230,13 @@ f
 
 ```
 
-Using the same code as above, with a few minor adjustments I can make similar graphs with other qualitative variables, such as the sex of the passenger.
+\hfill
 
-```{r sex/survived}
+## 2.2 Who do you save?
+
+When the data is explored a little further, Women and children appears to be the answer to that question. Looking at th two plots below, it is apparent that given that a passenber was Female, her probability of Surviving was roughly 74.2%. On the other hand, if a passenger was Male, he had over an 80% change of dying. 
+
+```{r sex vs survived}
 #Sex vs. Survived
 a <- ggplot(training, aes(y=Survived,  x=factor(Survived,
                                                 labels=c("Died","Lived"))))
@@ -246,11 +250,46 @@ a <- a + labs(x="", y = "Percentage",
               title = "Probabilities of Living Given Gender")
 a <- a + geom_text(
       aes(label = paste(round((..count../c(314,314,577,577)), 4)*100, "%", sep = ""), y = ..prop..),  stat= "count",
-      vjust = c(20.5,7,5,22.5))
+      vjust = c(21,7,5,23))
 a
 ```
 
-## 3 Cabin Classification
+```{r survived vs sex}
+# survived vs. sex
+a <- ggplot(training,
+        aes(y=Sex,
+            x=factor(Sex,
+                     labels=c('Female','Male')
+                     )
+            )
+        )
+a <- a + geom_bar(aes(y=..prop..,
+                      group=Survived,
+                      fill=factor(..x.., labels=c('Female','Male')
+                                  )
+                      )
+                  )
+a <- a + facet_grid(~factor(Survived,
+                            labels=c('Died','Survived')
+                            )
+                    )
+a <- a + scale_y_continuous(labels = scales::percent) 
+a <- a + scale_fill_discrete(name='Sex')
+a <- a + labs(x="", y = "Percentage",
+              title = "Gender Proportions by Survival Status")
+a <- a + geom_text(aes(
+    label = paste(round((..count../c(549,549,342,342)), 4)*100, "%", sep = ""),
+    y = ..prop..),
+    stat= "count",
+    vjust = c(24.5,4,9,19.5))
+a
+```
+
+```{r}
+
+```
+
+## 4 Cabin Classification
 
 It seems logical that looking at *where* each passenger was when the Titanic started sinking could provide some insight as to why some lived and others did not. The "Sinking" section on the [Titanic Wikipedia Page](https://en.wikipedia.org/wiki/RMS_Titanic) states that the iceberg was struck at 11:40 pm. Considering the time of night, combined with the likely cold air temperature, I think it is safe to say that most passengers were inside, if not in their rooms sleeping.
 
