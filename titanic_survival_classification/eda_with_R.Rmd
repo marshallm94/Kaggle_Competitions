@@ -14,9 +14,9 @@ What characteristics separate those who survived from those who died?
 
 ## Secondary Questions
 
-1. Does Socioeconomic Status have an affect on Survival?
-2. How do Gender and Age affect Survival Rates?
-3. Does where a passenger was staying aboard the Titanic affect their probability of Surviviing?
+1. Does socioeconomic status have an affect on survival?
+2. How do Gender and Age affect rurvival rates?
+3. How does family size affect surival rates?
 
 ```{r import_data}
 setwd("/Users/marsh/data_science_projects/Kaggle_Competitions/titanic_survival_classification/")
@@ -42,8 +42,8 @@ Looking at the training data froma bird-eye view, there are 891 observations rep
 | Name | Passenger Name |
 | Sex | Male or Female |
 | Age | Passenger Age |
-| SibSp | Number of siblings or spouse aboard ship |
-| Parch | Number of parents or children aboard ship |
+| SibSp | Number of siblings + spouse aboard ship |
+| Parch | Number of parents + children aboard ship |
 | Ticket | Ticket Number |
 | Fare | Amount paid for ticket |
 | Cabin | Cabin number |
@@ -236,7 +236,7 @@ f
 
 A quick overview of the Gender and Age variables are shown below, demonstrating that most people aboard were men and between 20 - 40 years old.
 
-```{r gender summary}
+```{r gender_summary}
 props <- with(training, paste(round(table(Sex)/nrow(training)*100, 2), "%", sep = ""))
 df <- data.frame(props, row.names = c('Female','Male'))
 knitr::kable(df, col.names = "Proportion", align = 'r', caption = 'Gender Proportions')
@@ -260,7 +260,7 @@ Looking at the two plots on the following page, it is apparent that given that a
 
 The second plot shows the probabilities of a passenger being Male or Female, conditioned on whether they survived the sinking of the ship or not. Once again, there is a vast gender divide of the passengers that died, with 85% of all passenger that died being Male. Given that a passenger survived, there is more than double the chance that she was Female than Male.
 
-```{r sex vs survived}
+```{r sex_vs_survived}
 #Sex vs. Survived
 a <- ggplot(training, aes(y=Survived,  x=factor(Survived,
                                                 labels=c("Died","Lived"))))
@@ -278,7 +278,7 @@ a <- a + geom_text(
 a
 ```
 
-```{r survived vs sex}
+```{r survived_vs_sex}
 # survived vs. sex
 a <- ggplot(training,
         aes(y=Sex,
@@ -313,7 +313,7 @@ a
 
 **If the goal of a model is a low error rate,** using only one variable is rarely a good idea. However, if interpretability and inference are the goal, using linear or logistic regression can provide unique insight into our data. In order to see how a passenger's age affects their chance of surviving the sinking of the ship, I decided to create a new column that puts passengers into certain bins, based on their age. I created 7 different bins, outlined in the table below, which separates each age group into those who lived and those who died.
 
-```{r}
+```{r age_binning}
 training$age_bin <- cut(training$Age, c(0,10,20,30,40,50,60,100), labels = c('0-10','11-20','21-30','31-40','41-50','50-60','Over 60'))
 tab <- with(training, table(Survived, age_bin))
 rownames(tab) <- c('Died','Survived')
@@ -374,84 +374,49 @@ a <- a + labs(x="", y = "Percentage",
 a
 ```
 
-## 4 Cabin Classification
+## 4 Family First
 
-It seems logical that looking at *where* each passenger was when the Titanic started sinking could provide some insight as to why some lived and others did not. The "Sinking" section on the [Titanic Wikipedia Page](https://en.wikipedia.org/wiki/RMS_Titanic) states that the iceberg was struck at 11:40 pm. Considering the time of night, combined with the likely cold air temperature, I think it is safe to say that most passengers were inside, if not in their rooms sleeping.
+Carrying the theme of the analysis into the familial realm, the two plots below show the probability of surviving based on the value in the $Parch$ column (the number of parents + children aboard per passenger) and the value in the $SibSp$ column (the spouse + number of siblings aboard per passenger).
 
-Finding out where each passenger was will be a two fold process:
+One important thing to note is the sample sizes for each facet within each plot, provided in a table below the associated plot. Since the goal of this analysis (and statistics in general) is to make assumptions about a population based on a sample, I would only be willing to take the survival rates of the passengers with 1, 2 or 3 in the $Parch$ column at face value; I would be hesitant to make any generalizations on the other possible values (4, 5, 6 and 7), due to such small sample sizes per group.
 
-1. Subsetting on the Deck they were on, noted by the letter in the Cabin column.
-2. Subsetting where on that deck they were, noted by the number in the Cabin column.
+\hfill
 
-An important note is that the vast majority of the passengers did not have an entry in the Cabin column. (There aren't any NA's, the entries are not even filled with spaces, they are simply "nothing"). In order to subset these observations, I used the ouput from a "nothing" observation in the logical statement.
-
-After subsetting, summing the number of rows in each subset, *which should equal 891, the total number of observations,* returns 894. A little searching led to finding the duplicates, show below.
-
-
-```{r}
-#Split data on Cabin Letter
-a_class <- training[grep("A", training$Cabin),]
-b_class <- training[grep("B", training$Cabin),]
-c_class <- training[grep("C", training$Cabin),]
-d_class <- training[grep("D", training$Cabin),]
-e_class <- training[grep("E", training$Cabin),]
-f_class <- training[grep("F", training$Cabin),]
-g_class <- training[grep("G", training$Cabin),]
-
-#the "nothing" class
-blank_class <- subset(training, Cabin == training[1,11])
-
-sum(nrow(a_class) + nrow(b_class) + nrow(c_class) + nrow(d_class) +
-          nrow(e_class) + nrow(f_class) + nrow(g_class) + nrow(blank_class))
-
-#Duplicate Cabin Values
-duplicates <- training[c(76,129,700,716),]
-duplicates
-
-#look at passenger id 534
-training[grep("Peter", training$Name),]
-```
-
-To decide which subset to assign these observations too, looking at the Embarked and Ticket columns for those observations in the g_class subset, I can see that everyone in this cabin class embarked from Southampton and had similar ticket
-
-
-```{r}
-table(a_class$Survived)[2]/sum(table(a_class$Survived))
-table(b_class$Survived)[2]/sum(table(b_class$Survived))
-table(c_class$Survived)[2]/sum(table(c_class$Survived))
-table(d_class$Survived)[2]/sum(table(d_class$Survived))
-table(e_class$Survived)[2]/sum(table(e_class$Survived))
-table(f_class$Survived)[2]/sum(table(f_class$Survived))
-table(g_class$Survived)[2]/sum(table(g_class$Survived))
-table(blank_class$Survived)[2]/sum(table(blank_class$Survived))
-
-#Split data on Cabin Room Number
-tCabin_number = grep("[0-9]{2,}", training$Cabin)
-test <- mutate(training, test_column = c(strsplit(as.character(training$Cabin), " ")))
-
-#Parch and Sibsp Analysis
-table(training$Parch, training$Survived)
-
+```{r parch_visuals}
+#Parch
 h <- ggplot(data = training,
             aes(y = Survived,
                 x = factor(Survived, labels = c("Died","Lived"))))
 h <- h + geom_bar(aes(y = ..prop.., group = Parch,
-                      fill = factor(..x.., labels = c("Died","Lived"))))
+                      fill = factor(..x..)))
 h <- h + facet_grid(~Parch)
 h <- h + scale_y_continuous(labels = scales::percent)
-h <- h + scale_fill_discrete()
+h <- h + scale_fill_discrete(guide = FALSE)
+h <- h + labs(x = "", y = "Percentage", title = 'Family Survival: Parents + Children')
 h
 
+parch_df <- with(training, table(Survived, Parch))
+knitr::kable(parch_df, caption = "Death & Surival Counts by Number of Parents or Children Aboard")
+```
+
+
+With regard to the previous paragraph, note that the sample sizes per possible value in the $SibSp$ column decrease dramatically after 2. In the same vein as above, making assumptions about the population (test set) using $SibSp$ with values greater than two would be statistically irresponsible.
+
+
+```{r sibsp_visuals}
 d <- ggplot(data = training,
             aes(y = Survived,
                 x = factor(Survived, labels = c("Died","Lived"))))
 d <- d + geom_bar(aes(y = ..prop.., group = SibSp,
-                      fill = factor(..x.., labels = c("Died","Lived"))))
+                      fill = factor(..x..)))
 d <- d + facet_grid(~SibSp)
 d <- d + scale_y_continuous(labels = scales::percent)
-d <- d + scale_fill_discrete()
+d <- d + scale_fill_discrete(guide = FALSE)
+d <- d + labs(x = "", y = "Percentage", title = 'Family Survival: Spouse + Siblings')
 d
 
+sibsp_df <- with(training, table(Survived, SibSp))
+knitr::kable(sibsp_df, caption = "Death & Surival Counts by Number of Parents or Children Aboard")
 ```
 
 
