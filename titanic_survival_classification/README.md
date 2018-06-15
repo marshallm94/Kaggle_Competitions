@@ -8,6 +8,6 @@ In an effort to strengthen my programming knowledge across multiple languages, I
 
     * This will "tell the story" of the sinking of the Titanic using descriptive analytics on the training data, as well as provide some Bayes' Theorem and logistic regression interpretations using the data.
 
-2. **Machine Learning with Python**
+2. **[Machine Learning with Python](ml_with_python.md)**
 
     * I will test a variety of classification algorithms on the training data, performing a grid search over all and then using the best model on the testing data.
