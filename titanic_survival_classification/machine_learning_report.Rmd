@@ -1,6 +1,16 @@
+---
+title: "Machine Learning with Python"
+author: "Marshall McQuillen"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
 # EDA Recap
 
-After getting to know the data during [EDA](eda_with_R.pdf), some general statements about the data can be made with regard to survival status:
+After getting to know the data during [EDA](eda_with_R.pdf), some general statements can be made with regard to survival status:
 
 * A passenger's probability of surviving decreases as their socioeconomic status decreases.
 * Given a passenger is male, he almost certainly died.
@@ -25,3 +35,4 @@ This section will be broken down into four parts:
 The model that will be used as the benchmark will be logistic regression using the Age, Gender, Parch and Sibsp variables, as well as all the combinations of those variables, allowing for interaction effects to occur.
 
 $$\hat{y}~=~$$
+
