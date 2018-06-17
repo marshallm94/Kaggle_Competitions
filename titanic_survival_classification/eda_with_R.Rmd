@@ -51,8 +51,6 @@ Looking at the training data from a birds-eye view, there are 891 observations r
 
 First and foremost, by running `str(training)` on the data, it is apparent that the first entries in the Cabin and Embarked columns are empty strings, indicating that the data is probably not perfectly clean (no surprises there). Checking to see where any Null's might be, it becomes clear that there are in fact no nulls, and that these spaces were intentionally left empty. In addition to null values, all the NA's are in the Age, accounting for roughly 20% of the values in that column. Both of these will need to be imputed intelligently when the time to create a predictive model comes around.
 
-In addition to the missing values, it is important to note that some of the discrete attributes have been read in as continuous variabes such as Pclass, Sibsp and Parch. Since these variables actually represent discrete characteristics of each passenger, changing them to be non-continuous will allow a more representative analysis.
-
 ```{r data_overview}
 # str(training)
 
