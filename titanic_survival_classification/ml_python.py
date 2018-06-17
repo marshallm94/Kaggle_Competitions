@@ -10,7 +10,7 @@ from sklearn.pipeline import Pipeline, FeatureUnion
 from sklearn.model_selection import train_test_split, cross_val_score
 from sklearn.cross_validation import KFold
 from sklearn.pipeline import Pipeline
-from sklearn.preprocessing import StandardScaler, Imputer
+from sklearn.preprocessing import StandardScaler, Imputer, PolynomialFeatures
 from sklearn.model_selection import cross_val_score, train_test_split, GridSearchCV
 from sklearn.metrics import confusion_matrix, precision_score, recall_score, accuracy_score
 from sklearn.tree import DecisionTreeClassifier
@@ -81,16 +81,6 @@ def impute_age(df):
                     df.loc[mask & mask2 & mask3, 'Age'] = imputer.fit_transform(df.loc[mask & mask2 & mask3, 'Age'].values.reshape(-1,1))
 
 
-def create_X_y():
-    df.drop(['Name','Ticket','Cabin'], axis=1, inplace=True)
-    df = pd.get_dummies(df)
-
-    X = df.drop('Survived', axis=1, inplace=False).values
-    y = df['Survived'].values
-
-    return X, y
-
-
 def count_nans(df, columns, verbose=True):
     """
     Calculates nan value percentages per column in a pandas DataFrame.
@@ -146,7 +136,7 @@ def score_model(model, x_train, y_train, cv=5):
 
 if __name__ == "__main__":
 
-    # data cleaning
+    # data prep
     df = pd.read_csv("titanic_train.csv")
     format_data(df)
     count_nans(df, df.columns)
@@ -154,20 +144,19 @@ if __name__ == "__main__":
     df.drop(np.argwhere(pd.isnull(df['Embarked'].values)).ravel(), inplace=True)
     count_nans(df, df.columns)
 
+    X = df.drop(['PassengerId','Survived', 'Name', 'Cabin', 'Ticket'], axis=1, inplace=False)
+    X = pd.get_dummies(X).values
+    poly = PolynomialFeatures(degree=1, interaction_only=True, include_bias=False)
+    X = poly.fit_transform(X)
+    y = df['Survived'].values
+
+    # modeling
+    np.random.seed(5)
+    x_train, x_test, y_train, y_test = train_test_split(X, y)
+    log_mod = LogisticRegression()
+    score_model(log_mod, x_train, y_train, 8)
 
 
-
-
-    # X, y = clean_data(df)
-    #
-    # standardizer = StandardScaler()
-    # standardizer.fit(X)
-    # X = standardizer.transform(X)
-    #
-    # # modeling
-    # x_train, x_test, y_train, y_test = train_test_split(X, y)
-    #
-    # log_mod = LogisticRegression()
     # rf = RandomForestClassifier()
     # gradient_booster = GradientBoostingClassifier()
     # svc = SVC()
