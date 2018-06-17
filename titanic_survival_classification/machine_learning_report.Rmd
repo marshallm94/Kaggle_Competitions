@@ -24,10 +24,21 @@ Using some of the insights (summarized above) that were extracted from the explo
 
 This section will be broken down into four parts:
 
-1. **Create a Benchmark** - Logistic Regression with a few select coefficients
-2. **Multi-Model Testing** - Cross validate a variety of classification algorithms, performing minor grid searches over each
-3. **Algorithm Tuning and Explanation** - Choose the model with the highest accuracy, perform a more granular grid search and explain the mathematical foundations of the algorithm.
-4. **Test Set Scoring** - Use the refined model on the test set.
+1. **Data Cleaning** - As mentioned in the [Exploratory Analysis](eda_with_R.pdf), there are some Null and NaN value that needs to be taken care of.
+2. **Create a Benchmark** - Logistic Regression with a few select coefficients.
+3. **Multi-Model Testing** - Cross validate a variety of classification algorithms, performing minor grid searches over each.
+4. **Algorithm Tuning and Explanation** - Choose the model with the highest accuracy, perform a more granular grid search and explain the mathematical foundations of the algorithm.
+5. **Test Set Scoring** - Use the refined model on the test set.
+
+## Data Cleaning
+
+First and Foremost, as mentioned briefly in the exploratory analysis with R, there is a small amount of data cleaning that needs to be performed before modeling. As it turns out, over 75% of the values in the Cabin column are empty strings. Initially, one might try grouping on the SipSp and Parch columns and then looking at the last names to determine any families that were traveling together. Hypothetically, this would then lead to some of the family members having entries in the Cabin column, and one could then impute the values from there. Unfortunately, when this was performed the groupings either all had no entries in the Cabin column of they were all empty. Due to this, this column will not be used in the modeling process since imputing around 75% of the values would be grossly overreaching. 
+
+In addition, there are 177 NaN values in the Age column, which amounts to roughly 20% of the data set. Since this variable *will* be used in the modeling process, some imputation wil be necessary. Instead of imputing the **entire** column mean for **all** of the missing values, the distortion to the distribution of the values can be minimized by getting a little more granular.
+
+In order to do this, any NaN values in the Age column were imputed with the mean of a *subset* of the data. This subset was created by, for each of the possible combinations of the distinct values in the Gender, Pclass and Title (a feature constructed out of the Name column, whose values include "Mr.","Mrs.","Master.", etc) columns, masking the entire data set and imputing the mean **of that subset** for the NaN values **in that subset.**
+
+Lastly, there were two observations that didn't have values in the Embarked column, which were droppped since there will be close to no affect going from 891 observations to 889 observations. In addition, if there hypothetically were an improvement in the error rate, it is unlikely that it would have been worth the time spent to work through an intelligent manner to impute those values.
 
 
 ### Benchmark Model - Logistic Regression

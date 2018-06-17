@@ -1,6 +1,8 @@
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
+import math as m
+import scipy.stats as stats
 from sklearn.preprocessing import StandardScaler
 from sklearn.linear_model import LogisticRegression
 from sklearn.feature_selection import SelectKBest, chi2
@@ -78,6 +80,7 @@ def impute_age(df):
                     imputer = Imputer(strategy='mean')
                     df.loc[mask & mask2 & mask3, 'Age'] = imputer.fit_transform(df.loc[mask & mask2 & mask3, 'Age'].values.reshape(-1,1))
 
+
 def create_X_y():
     df.drop(['Name','Ticket','Cabin'], axis=1, inplace=True)
     df = pd.get_dummies(df)
@@ -144,10 +147,12 @@ def score_model(model, x_train, y_train, cv=5):
 if __name__ == "__main__":
 
     # data cleaning
-    df = pd.read_csv("/Users/marsh/data_science_projects/Kaggle_Competitions/titanic_survival_classification/titanic_train.csv")
+    df = pd.read_csv("titanic_train.csv")
     format_data(df)
+    count_nans(df, df.columns)
     impute_age(df)
-    count_nans(df, ['Age'])
+    df.drop(np.argwhere(pd.isnull(df['Embarked'].values)).ravel(), inplace=True)
+    count_nans(df, df.columns)
 
 
 
