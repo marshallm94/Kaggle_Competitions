@@ -1,16 +1,11 @@
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
-import math as m
-import scipy.stats as stats
-from sklearn.preprocessing import StandardScaler
 from sklearn.linear_model import LogisticRegression
 from sklearn.feature_selection import SelectKBest, chi2
 from sklearn.pipeline import Pipeline, FeatureUnion
-from sklearn.model_selection import train_test_split, cross_val_score
-from sklearn.cross_validation import KFold
 from sklearn.pipeline import Pipeline
-from sklearn.preprocessing import StandardScaler, Imputer, PolynomialFeatures
+from sklearn.preprocessing import Imputer
 from sklearn.model_selection import cross_val_score, train_test_split, GridSearchCV
 from sklearn.metrics import confusion_matrix, precision_score, recall_score, accuracy_score
 from sklearn.tree import DecisionTreeClassifier
@@ -21,9 +16,9 @@ plt.style.use('ggplot')
 
 def format_data(df, title_options=set(['Capt.','Col.','Don.','Dr.','Major.','Master.','Miss.','Mr.','Mrs.','Ms.','Rev.'])):
     '''
-    Converts the Pclass, SibSp and Parch columns to be objects, as well as
-    creates a new column, "Title", that is the prefix associated with each
-    passenger (i.e. Mr., Mrs., Master., etc.)
+    Converts the Pclass, SibSp and Parch columns to be int types, as well
+    as creates a new column, "Title", that is the prefix associated with
+    each passenger (i.e. Mr., Mrs., Master., etc.)
 
     Parameters:
     ----------
@@ -37,9 +32,9 @@ def format_data(df, title_options=set(['Capt.','Col.','Don.','Dr.','Major.','Mas
     ----------
     None
     '''
-    df['Pclass'] = df['Pclass'].astype(object)
-    df['SibSp'] = df['SibSp'].astype(object)
-    df['Parch'] = df['Parch'].astype(object)
+    df['Pclass'] = df['Pclass'].astype(int)
+    df['SibSp'] = df['SibSp'].astype(int)
+    df['Parch'] = df['Parch'].astype(int)
     df['Split'] = df['Name'].apply(lambda x: x.split())
     df['Title'] = df['Split'].apply(lambda x: title_options.intersection(x).pop() if len(title_options.intersection(x)) > 0 else 'Misc.')
     df['Title'] = df['Title'].astype(object)
@@ -120,18 +115,46 @@ def count_nans_array(X):
     return np.array(nans)
 
 
-def score_model(model, x_train, y_train, cv=5):
-    acc = np.mean(cross_val_score(model, x_train, y_train, scoring='accuracy', cv=cv, n_jobs=-1))
+def score_model(model, x_train, y_train, cv=5, verbose=True):
+    '''
+    Performs K-Fold cross validation for the inputted model and returns the
+    accuracy, precision and recall, each averaged over the number of folds
+    specified by cv.
 
-    prec = np.mean(cross_val_score(model, x_train, y_train, scoring='precision', cv=cv, n_jobs=-1))
+    Parameters:
+    ----------
+    model : (sklearn model object)
+        An instantiated model object that implements the .fit() method
+    x_train : (2D array)
+        Training data
+    y_train : (1D array)
+        Training data target variable values
+    cv : (int)
+        Number of folds for K-Fold cross validation (default=5)
+    verbose: (bool)
+        If True (default), prints the accuracy, precision and recall
 
-    rec = np.mean(cross_val_score(model, x_train, y_train, scoring='recall', cv=cv, n_jobs=-1))
+    Returns:
+    ----------
+    cv_acc : (float)
+        Cross validated accuracy averaged over cv folds
+    cv_prec : (float)
+        Cross validated precision averaged over cv folds
+    cv_rec : (float)
+        Cross validated recall averaged over cv folds
+    '''
+    cv_acc = np.mean(cross_val_score(model, x_train, y_train, scoring='accuracy', cv=cv, n_jobs=-1))
 
-    print("{} | {}-Fold Accuracy: {}".format(model.__class__.__name__, cv, acc))
-    print("{} | {}-Fold Precision: {}".format(model.__class__.__name__, cv, prec))
-    print("{} | {}-Fold Recall: {}".format(model.__class__.__name__, cv, rec))
+    cv_prec = np.mean(cross_val_score(model, x_train, y_train, scoring='precision', cv=cv, n_jobs=-1))
 
-    return acc, prec, rec
+    cv_rec = np.mean(cross_val_score(model, x_train, y_train, scoring='recall', cv=cv, n_jobs=-1))
+
+    if verbose:
+        print("{} | {}-Fold Accuracy: {:.4f}".format(model.__class__.__name__, cv, cv_acc))
+        print("{} | {}-Fold Precision: {:.4f}".format(model.__class__.__name__, cv, cv_prec))
+        print("{} | {}-Fold Recall: {:.4f}".format(model.__class__.__name__, cv, cv_rec))
+
+    return cv_acc, cv_prec, cv_rec
 
 
 if __name__ == "__main__":
@@ -139,62 +162,59 @@ if __name__ == "__main__":
     # data prep
     df = pd.read_csv("titanic_train.csv")
     format_data(df)
-    count_nans(df, df.columns)
     impute_age(df)
     df.drop(np.argwhere(pd.isnull(df['Embarked'].values)).ravel(), inplace=True)
-    count_nans(df, df.columns)
-
     X = df.drop(['PassengerId','Survived', 'Name', 'Cabin', 'Ticket'], axis=1, inplace=False)
     X = pd.get_dummies(X).values
-    poly = PolynomialFeatures(degree=1, interaction_only=True, include_bias=False)
-    X = poly.fit_transform(X)
     y = df['Survived'].values
 
-    # modeling
+    # benchmark modeling
     np.random.seed(5)
     x_train, x_test, y_train, y_test = train_test_split(X, y)
-    log_mod = LogisticRegression()
-    score_model(log_mod, x_train, y_train, 8)
+    log_mod = LogisticRegression(penalty='l1')
+    log_acc, log_prec, log_rec = score_model(log_mod, x_train, y_train, 8)
 
 
-    # rf = RandomForestClassifier()
-    # gradient_booster = GradientBoostingClassifier()
-    # svc = SVC()
-    # dt = DecisionTreeClassifier()
-    # bag = BaggingClassifier()
-    #
-    # models = [log_mod, rf, gradient_booster, svc, dt, bag]
-    # for model in models:
-    #     score_model(model, x_train, y_train)
-    #
-    # # coarse grid searching
+
+
+    rf = RandomForestClassifier()
+    gradient_booster = GradientBoostingClassifier()
+    svc = SVC()
+    dt = DecisionTreeClassifier()
+    bag = BaggingClassifier()
+
+    models = [rf, gradient_booster, svc, dt, bag]
+    for model in models:
+        score_model(model, x_train, y_train)
+
+    # coarse grid searching
     # log_mod_grid = {"penalty": ['l1','l2'],
     #                 "C": [0.001, 0.01, 0.1, 1, 10],
     #                 "class_weight": ['balanced', None]
     # }
-    # rf_grid = {"n_estimators": list(np.arange(100, 700, 100)),
-    #            "criterion": ['gini','entropy'],
-    #            "max_features": ['auto','log2', None]
-    # }
-    # gradient_booster_grid = {"learning_rate": [0.001, 0.01, 0.1, 1, 10],
-    #                          "n_estimators": list(np.arange(100, 700, 100)),
-    #                          "max_depth": [1,2,3],
-    # }
-    # svc_grid = {"C": [1, 3, 5, 10],
-    #             "kernel": ['linear','poly','rbf'],
-    #             "degree": [2,3,4]
-    # }
-    # dt_grid = {"criterion": ['gini','entropy'],
-    #            "class_weight": ["balanced", None]
-    # }
-    # bag_grid = {"n_estimators": list(np.arange(100, 700, 100)),
-    #             "max_features": [0.25, 0.5, 0.75, 1.0]
-    # }
-    #
-    # grids = [log_mod_grid, rf_grid, gradient_booster_grid, svc_grid, dt_grid, bag_grid]
-    #
-    # model_grids = zip(models, grids)
-    # for model, grid in model_grids:
-    #     g = GridSearchCV(model, n_jobs=-1, scoring='accuracy', cv=5, param_grid=grid, verbose=True)
-    #     g.fit(x_train, y_train)
-    #     score_model(g.best_estimator_, x_train, y_train)
+    rf_grid = {"n_estimators": list(np.arange(100, 700, 100)),
+               "criterion": ['gini','entropy'],
+               "max_features": ['auto','log2', None]
+    }
+    gradient_booster_grid = {"learning_rate": [0.001, 0.01, 0.1, 1, 10],
+                             "n_estimators": list(np.arange(100, 700, 100)),
+                             "max_depth": [1,2,3],
+    }
+    svc_grid = {"C": [1, 3, 5, 10],
+                "kernel": ['linear','poly','rbf', 'sigmoid','precomputed'],
+                "degree": [2,3,4]
+    }
+    dt_grid = {"criterion": ['gini','entropy'],
+               "class_weight": ["balanced", None]
+    }
+    bag_grid = {"n_estimators": list(np.arange(100, 700, 100)),
+                "max_features": [0.25, 0.5, 0.75, 1.0]
+    }
+
+    grids = [rf_grid, gradient_booster_grid, svc_grid, dt_grid, bag_grid]
+
+    model_grids = zip(models, grids)
+    for model, grid in model_grids:
+        g = GridSearchCV(model, n_jobs=-1, scoring='accuracy', cv=8, param_grid=grid, verbose=True)
+        g.fit(x_train, y_train)
+        score_model(g.best_estimator_, x_train, y_train)

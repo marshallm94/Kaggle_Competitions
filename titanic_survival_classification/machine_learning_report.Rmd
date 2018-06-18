@@ -8,7 +8,7 @@ output: pdf_document
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
-# EDA Recap
+## EDA Recap
 
 After getting to know the data during [EDA](eda_with_R.pdf), some general statements can be made with regard to survival status:
 
@@ -41,9 +41,17 @@ In order to do this, any NaN values in the Age column were imputed with the mean
 Lastly, there were two observations that didn't have values in the Embarked column, which were droppped since there will be close to no affect going from 891 observations to 889 observations. In addition, if there hypothetically were an improvement in the error rate, it is unlikely that it would have been worth the time spent to work through an intelligent manner to impute those values.
 
 
-### Benchmark Model - Logistic Regression
+## Benchmark Model - Logistic Regression
 
-The model that will be used as the benchmark will be logistic regression using the Age, Gender, Parch and Sibsp variables, as well as all the combinations of those variables, allowing for interaction effects to occur.
+Using a total of eight columns ($Pclass$, $Sex$, $Age$, $SibSp$, $Parch$, $Fare$, $Embarked$, $Title$), some of which were one hot encoded, K-Fold cross validation with $K~=~8$ was used to get a sense of how simple logistic regression with ridge regularization would perform. The results are summarized in the table below.
 
-$$\hat{y}~=~$$
+
+| Metrics | Score |
+| - | - |
+| 8-Fold Accuracy | 82.45% |
+| 8-Fold Precision | 79.36% |
+| 8-Fold Recall | 75.51% |
+
+Since there is no obvious reason why a false positive should be considered more costly than a false negative, accuracy will be the metric to beat for all subsequent modeling (precision and recall will still be reported). For all subsequent model evaluation, accuracy must be greater than 84% for the increase in model complexity to be worth the scrapping of the benchmark model.
+
 
