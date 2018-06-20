@@ -2,15 +2,9 @@ import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 from sklearn.linear_model import LogisticRegression
-from sklearn.feature_selection import SelectKBest, chi2
-from sklearn.pipeline import Pipeline, FeatureUnion
-from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import Imputer
 from sklearn.model_selection import cross_val_score, train_test_split, GridSearchCV
 from sklearn.metrics import confusion_matrix, precision_score, recall_score, accuracy_score
-from sklearn.tree import DecisionTreeClassifier
-from sklearn.ensemble import GradientBoostingClassifier, RandomForestClassifier, BaggingClassifier
-from sklearn.svm import SVC
 plt.style.use('ggplot')
 
 
@@ -136,23 +130,23 @@ def score_model(model, x_train, y_train, cv=5, verbose=True):
 
     Returns:
     ----------
-    cv_acc : (float)
-        Cross validated accuracy averaged over cv folds
-    cv_prec : (float)
-        Cross validated precision averaged over cv folds
-    cv_rec : (float)
-        Cross validated recall averaged over cv folds
+    cv_acc : (1D array)
+        Cross validated accuracy scores; will have length equal to cv
+    cv_prec : (1D array)
+        Cross validated precision scores; will have length equal to cv
+    cv_rec : (1D array)
+        Cross validated recall scores; will have length equal to cv
     '''
-    cv_acc = np.mean(cross_val_score(model, x_train, y_train, scoring='accuracy', cv=cv, n_jobs=-1))
+    cv_acc = cross_val_score(model, x_train, y_train, scoring='accuracy', cv=cv, n_jobs=-1)
 
-    cv_prec = np.mean(cross_val_score(model, x_train, y_train, scoring='precision', cv=cv, n_jobs=-1))
+    cv_prec = cross_val_score(model, x_train, y_train, scoring='precision', cv=cv, n_jobs=-1)
 
-    cv_rec = np.mean(cross_val_score(model, x_train, y_train, scoring='recall', cv=cv, n_jobs=-1))
+    cv_rec = cross_val_score(model, x_train, y_train, scoring='recall', cv=cv, n_jobs=-1)
 
     if verbose:
-        print("{} | {}-Fold Accuracy: {:.4f}".format(model.__class__.__name__, cv, cv_acc))
-        print("{} | {}-Fold Precision: {:.4f}".format(model.__class__.__name__, cv, cv_prec))
-        print("{} | {}-Fold Recall: {:.4f}".format(model.__class__.__name__, cv, cv_rec))
+        print("{} | {}-Fold Accuracy: {:.4f}".format(model.__class__.__name__, cv, np.mean(cv_acc)))
+        print("{} | {}-Fold Precision: {:.4f}".format(model.__class__.__name__, cv, np.mean(cv_prec)))
+        print("{} | {}-Fold Recall: {:.4f}".format(model.__class__.__name__, cv, np.mean(cv_rec)))
 
     return cv_acc, cv_prec, cv_rec
 
@@ -160,7 +154,7 @@ def score_model(model, x_train, y_train, cv=5, verbose=True):
 if __name__ == "__main__":
 
     # data prep
-    df = pd.read_csv("titanic_train.csv")
+    df = pd.read_csv("../titanic_train.csv")
     format_data(df)
     impute_age(df)
     df.drop(np.argwhere(pd.isnull(df['Embarked'].values)).ravel(), inplace=True)
@@ -173,48 +167,3 @@ if __name__ == "__main__":
     x_train, x_test, y_train, y_test = train_test_split(X, y)
     log_mod = LogisticRegression(penalty='l1')
     log_acc, log_prec, log_rec = score_model(log_mod, x_train, y_train, 8)
-
-
-
-
-    rf = RandomForestClassifier()
-    gradient_booster = GradientBoostingClassifier()
-    svc = SVC()
-    dt = DecisionTreeClassifier()
-    bag = BaggingClassifier()
-
-    models = [rf, gradient_booster, svc, dt, bag]
-    for model in models:
-        score_model(model, x_train, y_train)
-
-    # coarse grid searching
-    # log_mod_grid = {"penalty": ['l1','l2'],
-    #                 "C": [0.001, 0.01, 0.1, 1, 10],
-    #                 "class_weight": ['balanced', None]
-    # }
-    rf_grid = {"n_estimators": list(np.arange(100, 700, 100)),
-               "criterion": ['gini','entropy'],
-               "max_features": ['auto','log2', None]
-    }
-    gradient_booster_grid = {"learning_rate": [0.001, 0.01, 0.1, 1, 10],
-                             "n_estimators": list(np.arange(100, 700, 100)),
-                             "max_depth": [1,2,3],
-    }
-    svc_grid = {"C": [1, 3, 5, 10],
-                "kernel": ['linear','poly','rbf', 'sigmoid','precomputed'],
-                "degree": [2,3,4]
-    }
-    dt_grid = {"criterion": ['gini','entropy'],
-               "class_weight": ["balanced", None]
-    }
-    bag_grid = {"n_estimators": list(np.arange(100, 700, 100)),
-                "max_features": [0.25, 0.5, 0.75, 1.0]
-    }
-
-    grids = [rf_grid, gradient_booster_grid, svc_grid, dt_grid, bag_grid]
-
-    model_grids = zip(models, grids)
-    for model, grid in model_grids:
-        g = GridSearchCV(model, n_jobs=-1, scoring='accuracy', cv=8, param_grid=grid, verbose=True)
-        g.fit(x_train, y_train)
-        score_model(g.best_estimator_, x_train, y_train)
