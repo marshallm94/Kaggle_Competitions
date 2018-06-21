@@ -10,7 +10,7 @@ knitr::opts_chunk$set(echo = TRUE)
 
 ## EDA Recap
 
-After getting to know the data during [EDA](eda_with_R.pdf), some general statements can be made with regard to survival status:
+After getting to know the data during EDA, some general statements can be made with regard to survival status:
 
 * A passenger's probability of surviving decreases as their socioeconomic status decreases.
 * Given a passenger is male, he almost certainly died.
@@ -24,7 +24,7 @@ Using some of the insights (summarized above) that were extracted from the explo
 
 This section will be broken down into four parts:
 
-1. **Data Cleaning** - As mentioned in the [Exploratory Analysis](eda_with_R.pdf), there are some Null and NaN value that needs to be taken care of.
+1. **Data Cleaning** - As mentioned in the Exploratory Analysis, there are some Null and NaN value that needs to be taken care of.
 2. **Create a Benchmark** - Logistic Regression with a few select coefficients.
 3. **Multi-Model Testing** - Cross validate a variety of classification algorithms, performing minor grid searches over each.
 4. **Algorithm Tuning and Explanation** - Choose the model with the highest accuracy, perform a more granular grid search and explain the mathematical foundations of the algorithm.
@@ -58,7 +58,7 @@ Since there is no obvious reason why a false positive should be considered more 
 
 In order to determine if there is a model that will beat the benchmark, I chose five model frameworks to grid search over, ideally one of which would be a more superior model than the benchmark.
 
-For each model architecture, a number of different models were built, the best model (*for the model architecture*) being determined using GridSearchCV's 3-Fold cross validation. Once the best estimator for a given framework was selected, I used 8-Fold cross validation on the training data to estimate which model, if any, has the highest chance of beating the benchmark. The results are shown below.
+For each model architecture, a number of different models were built, the best model (*for the model architecture*) being determined using GridSearchCV's 3-Fold cross validation. Once the best estimator for a given framework was selected, I used 8-Fold cross validation on the training data to estimate which model, if any, has the highest chance of beating the benchmark. The training run times are summarized in the table below, and the Accuracy, Precision and Recall of all model architectures are illustrated on the following pages against the benchmark model.
 
 \hfill
 
@@ -71,9 +71,18 @@ For each model architecture, a number of different models were built, the best m
 | Support Vector Machine | 32 | 318.7 min |
 
 ![](images/accuracy_plot.png)
-
-Upon first glance, it seems rather shockingly that Bagged Decision Tree's outperformed some of the more complex architectures, such as Gradient Boosting or Random Forests's. 
-
-
 ![](images/precision_plot.png)
 ![](images/recall_plot.png)
+
+## Algorithm Tuning and Explanation
+
+Upon first glance, it seems rather shocking that Bagged Decision Tree's outperformed some of the more complex architectures, such as Gradient Boosting or a Random Forest. However, with a closer look, the $max~features$ parameter, **when not equal to 1**, allows each decision tree to have access to only a subset of the feature space. In a 1998 paper by T.Ho^1^, this ensemble method was coined a *Decision Forest*, a different albiet similar method to Random Forests.
+
+Recall that a Random Forest is a collection of decision trees, each tree being built a bootstrapped data set. At each split within any given tree, only a random sample of the predictors are available as candidates on which to create the split. This decorrelates the trees so that when multiple learners are averaged together, variance is reduced and the algorithm generalizes well.
+
+A Decision Forest is slightly different in that each decision tree within the ensemble **only has access to a random subset of the predictors.** Every node within a tree is then allowed to consider the full feature space **withing the already filtered feature space for that tree.** For example, if one is working with a **n x 12** data set, each tree within a Decision Forest will utilized all *n* observations, but only a random subset of the 12 features.
+
+With a broader and more refined grid search, the optimal number of estimators seems to fluctuate around 350, with the optimal number of features being 13. These are the parameters that will be used when pitted against the benchmark model on the test set.
+
+### References
+^1^ T. Ho, “The random subspace method for constructing decision forests”, Pattern Analysis and Machine Intelligence, 20(8), 832-844, 1998.

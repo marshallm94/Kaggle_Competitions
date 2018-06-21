@@ -1,11 +1,10 @@
 import pandas as pd
 import numpy as np
-import matplotlib.pyplot as plt
 from sklearn.linear_model import LogisticRegression
 from sklearn.preprocessing import Imputer
 from sklearn.model_selection import cross_val_score, train_test_split, GridSearchCV
 from sklearn.metrics import confusion_matrix, precision_score, recall_score, accuracy_score
-plt.style.use('ggplot')
+import pickle
 
 
 def format_data(df, title_options=set(['Capt.','Col.','Don.','Dr.','Major.','Master.','Miss.','Mr.','Mrs.','Ms.','Rev.'])):
@@ -66,8 +65,11 @@ def impute_age(df):
                 mask3 = df['Title'] == title
                 percent_nan = count_nans(df[mask & mask2 & mask3], ['Age'], verbose=False)[0][1]
                 if percent_nan > 0:
-                    imputer = Imputer(strategy='mean')
-                    df.loc[mask & mask2 & mask3, 'Age'] = imputer.fit_transform(df.loc[mask & mask2 & mask3, 'Age'].values.reshape(-1,1))
+                    if percent_nan == 1.0:
+                        df.loc[mask & mask2 & mask3, "Age"] = df['Age'].mean()
+                    else:
+                        imputer = Imputer(strategy='mean')
+                        df.loc[mask & mask2 & mask3, 'Age'] = imputer.fit_transform(df.loc[mask & mask2 & mask3, 'Age'].values.reshape(-1,1))
 
 
 def count_nans(df, columns, verbose=True):
@@ -98,15 +100,6 @@ def count_nans(df, columns, verbose=True):
             print("{} | {:.2f}% NaN".format(col, percent_nan*100))
 
     return col_nans
-
-
-def count_nans_array(X):
-    nans = []
-    for i in range(X.shape[1]):
-        print("Column: {} | NaNs: {}".format(i, np.isnan(X[:, i]).sum()))
-        nans.append(np.isnan(X[:, i]).sum())
-
-    return np.array(nans)
 
 
 def score_model(model, x_train, y_train, cv=5, verbose=True):
@@ -159,6 +152,11 @@ if __name__ == "__main__":
     impute_age(df)
     df.drop(np.argwhere(pd.isnull(df['Embarked'].values)).ravel(), inplace=True)
     X = df.drop(['PassengerId','Survived', 'Name', 'Cabin', 'Ticket'], axis=1, inplace=False)
+
+    # for aligning testing set columns
+    training_data = pd.get_dummies(X)
+    training_data.to_csv("../training_data.csv")
+
     X = pd.get_dummies(X).values
     y = df['Survived'].values
 
@@ -167,3 +165,12 @@ if __name__ == "__main__":
     x_train, x_test, y_train, y_test = train_test_split(X, y)
     log_mod = LogisticRegression(penalty='l1')
     log_acc, log_prec, log_rec = score_model(log_mod, x_train, y_train, 8)
+
+    # Validation set
+    log_mod.fit(x_train, y_train)
+    y_hat = log_mod.predict(x_test)
+    validation_set_acc = accuracy_score(y_test, y_hat)
+    print("\nLogistic Regression Validation Set Accuracy: {:.2f}%".format(validation_set_acc*100))
+
+    with open('logistic_regression_model.pickle', 'wb') as f:
+        pickle.dump(log_mod, f, protocol=pickle.HIGHEST_PROTOCOL)

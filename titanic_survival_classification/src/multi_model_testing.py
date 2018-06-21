@@ -1,9 +1,10 @@
+import matplotlib.pyplot as plt
 from sklearn.tree import DecisionTreeClassifier
 from sklearn.ensemble import GradientBoostingClassifier, RandomForestClassifier, BaggingClassifier
 from sklearn.svm import SVC
 from sklearn.model_selection import train_test_split, GridSearchCV
-import seaborn as sns
 from benchmark_model import *
+plt.style.use('ggplot')
 
 def box_plot(dictionary, box_line_color, box_fill_color, xlab, ylab, title, horizontal_line_dict=False, filename=False):
     '''
@@ -66,7 +67,7 @@ def box_plot(dictionary, box_line_color, box_fill_color, xlab, ylab, title, hori
         plt.show()
 
 
-def multi_model_grid_search(model_names, model_objects, model_grids, x_train, y_train, grid_cv=8, score_model_cv=8):
+def multi_model_grid_search(model_names, model_objects, model_grids, x_train, y_train, grid_cv=3, score_model_cv=8):
     '''
     Performs a grid search for mutliple models and then cross validates the
     best estimator of the grid.
@@ -109,19 +110,25 @@ def multi_model_grid_search(model_names, model_objects, model_grids, x_train, y_
     rec_dict : (dict)
         A dictionary where the keys are the model names and the values are
         the recall arrays that are the output of score_model
+    best_estimators : (dict)
+        A dictionary where the keys are the names of model architecture and
+        the values are the model objects with the best hyperparameter
+        configurations, determined by GridSearchCV
     '''
     acc_dict = {}
     prec_dict = {}
     rec_dict = {}
+    best_estimators = {}
     for name, model, grid in zip(model_names, model_objects, model_grids):
-        g = GridSearchCV(model, n_jobs=-1, scoring='accuracy', cv=grid_cv, param_grid=grid, verbose=True)
+        g = GridSearchCV(model(), n_jobs=-1, scoring='accuracy', cv=grid_cv, param_grid=grid, verbose=True)
         g.fit(x_train, y_train)
-        acc, prec, rec = score_model(g.best_estimator_, x_train, y_train, score_model_cv)
+        best_estimators[name] = model(**g.best_params_)
+        acc, prec, rec = score_model(model(**g.best_params_), x_train, y_train, score_model_cv)
         acc_dict[name] = acc
         prec_dict[name] = prec
         rec_dict[name] = rec
 
-    return acc_dict, prec_dict, rec_dict
+    return acc_dict, prec_dict, rec_dict, best_estimators
 
 if __name__ == "__main__":
 
@@ -136,11 +143,11 @@ if __name__ == "__main__":
     np.random.seed(5)
     x_train, x_test, y_train, y_test = train_test_split(X, y)
 
-    rf = RandomForestClassifier()
-    gradient_booster = GradientBoostingClassifier()
-    svc = SVC()
-    dt = DecisionTreeClassifier()
-    bag = BaggingClassifier()
+    rf = RandomForestClassifier
+    gradient_booster = GradientBoostingClassifier
+    svc = SVC
+    dt = DecisionTreeClassifier
+    bag = BaggingClassifier
 
     # coarse grid searching
     rf_grid = {"n_estimators": list(np.arange(100, 700, 100)),
@@ -159,27 +166,18 @@ if __name__ == "__main__":
     }
     svc_grid = {"C": [1, 3, 5, 10],
                 "kernel": ['linear','poly','rbf', 'sigmoid'],
-                "degree": [2,3,4]
+                "degree": [2,3]
     }
 
-    names = ['Random Forest','Gradient Boost','Decision Tree','10 Bagged Trees', "SVM"]
+    names = ['Random Forest','Gradient Boost','Decision Tree','Bagged Trees', "SVM"]
     models = [rf, gradient_booster, dt, bag, svc]
     grids = [rf_grid, gradient_booster_grid, dt_grid, bag_grid, svc_grid]
 
-    acc_dict, prec_dict, rec_dict = multi_model_grid_search(names, models, grids, x_train, y_train)
+    acc_dict, prec_dict, rec_dict, best_estimators = multi_model_grid_search(names, models, grids, x_train, y_train)
 
-
-    model_grids = zip(['Random Forest','Gradient Boost','Decision Tree','10 Bagged Trees', "SVM"], [rf, gradient_booster, dt, bag, svc], grids)
-    acc_dict = {}
-    prec_dict = {}
-    rec_dict = {}
-    for name, model, grid in model_grids:
-        g = GridSearchCV(model, n_jobs=-1, scoring='accuracy', cv=8, param_grid=grid, verbose=True)
-        g.fit(x_train, y_train)
-        acc, prec, rec = score_model(g.best_estimator_, x_train, y_train, 8)
-        acc_dict[name] = acc
-        prec_dict[name] = prec
-        rec_dict[name] = rec
-
-    acc_horiz_line_dict = {"Y Value": 0.83, "Color": "red", "Label": "Benchmark"}
-    box_plot(acc_dict, "darkblue", "skyblue", 'Model','Accuracy','Multi-Model Testing: Accuracy', acc_horiz_line_dict)
+    acc_horiz_line_dict = {"Y Value": 0.8245, "Color": "red", "Label": "Benchmark"}
+    box_plot(acc_dict, "darkblue", "skyblue", 'Model','Accuracy','Multi-Model Best Estimators: Accuracy', acc_horiz_line_dict, "../images/accuracy_plot.png")
+    prec_horiz_line_dict = {"Y Value": 0.7936, "Color": "red", "Label": "Benchmark"}
+    box_plot(prec_dict, "darkblue", "skyblue", 'Model','Precision','Multi-Model Best Estimators: Precision', prec_horiz_line_dict, "../images/precision_plot.png")
+    rec_horiz_line_dict = {"Y Value": 0.7551, "Color": "red", "Label": "Benchmark"}
+    box_plot(rec_dict, "darkblue", "skyblue", 'Model','Recall','Multi-Model Best Estimators: Recall', rec_horiz_line_dict, "../images/recall_plot.png")
