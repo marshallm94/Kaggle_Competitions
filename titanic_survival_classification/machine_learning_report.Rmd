@@ -54,4 +54,26 @@ Using a total of eight columns ($Pclass$, $Sex$, $Age$, $SibSp$, $Parch$, $Fare$
 
 Since there is no obvious reason why a false positive should be considered more costly than a false negative, accuracy will be the metric to beat for all subsequent modeling (precision and recall will still be reported). For all subsequent model evaluation, accuracy must be greater than 84% for the increase in model complexity to be worth the scrapping of the benchmark model.
 
+## Multi-Model Testing
 
+In order to determine if there is a model that will beat the benchmark, I chose five model frameworks to grid search over, ideally one of which would be a more superior model than the benchmark.
+
+For each model architecture, a number of different models were built, the best model (*for the model architecture*) being determined using GridSearchCV's 3-Fold cross validation. Once the best estimator for a given framework was selected, I used 8-Fold cross validation on the training data to estimate which model, if any, has the highest chance of beating the benchmark. The results are shown below.
+
+\hfill
+
+| Model Architecture | Number of possible models tested | Run Time |
+| - | - | - |
+| Random Forest | 36 | 41 sec |
+| Gradient Boosting | 90 | 33.7 sec |
+| Decision Tree | 4 | 0 sec |
+| Bagging | 24 | 30.9 sec |
+| Support Vector Machine | 32 | 318.7 min |
+
+![](images/accuracy_plot.png)
+
+Upon first glance, it seems rather shockingly that Bagged Decision Tree's outperformed some of the more complex architectures, such as Gradient Boosting or Random Forests's. 
+
+
+![](images/precision_plot.png)
+![](images/recall_plot.png)
