@@ -24,15 +24,15 @@ Using some of the insights (summarized above) that were extracted from the explo
 
 This section will be broken down into four parts:
 
-1. **Data Cleaning** - As mentioned in the Exploratory Analysis, there are some Null and NaN value that needs to be taken care of.
-2. **Create a Benchmark** - Logistic Regression with a few select coefficients.
+1. **Data Cleaning** - As mentioned in the Exploratory Analysis, there are some Null and NaN values that needs to be taken care of.
+2. **Create a Benchmark Model** - Logistic Regression with a few select coefficients.
 3. **Multi-Model Testing** - Cross validate a variety of classification algorithms, performing minor grid searches over each.
 4. **Algorithm Tuning and Explanation** - Choose the model with the highest accuracy, perform a more granular grid search and explain the mathematical foundations of the algorithm.
-5. **Test Set Scoring** - Use the refined model on the test set.
+5. **Test Set Scoring** - Use the refined model to make predictions on the test set.
 
 ## Data Cleaning
 
-First and Foremost, as mentioned briefly in the exploratory analysis with R, there is a small amount of data cleaning that needs to be performed before modeling. As it turns out, over 75% of the values in the Cabin column are empty strings. Initially, one might try grouping on the SipSp and Parch columns and then looking at the last names to determine any families that were traveling together. Hypothetically, this would then lead to some of the family members having entries in the Cabin column, and one could then impute the values from there. Unfortunately, when this was performed the theoretical family groupings either all had no entries in the Cabin column or they were all complete. This, paired with the fact that imputing over 75% of the values for a column could only be considered guesswork at best, leads to the decision to not include this column in the modeling process.
+First and Foremost, as mentioned briefly in the exploratory analysis with R, there is a small amount of data cleaning that needs to be performed before modeling. As it turns out, over 75% of the values in the Cabin column are empty strings. Initially, one might try grouping on the SipSp and Parch columns and then looking at the last names to determine any families that were traveling together. Hypothetically, this would then lead to some of the family members having entries in the Cabin column, and one could then impute the values from there. Unfortunately, when this was performed the theoretical family groupings either all had no entries in the Cabin column or they were all complete. This, paired with the fact that imputing over 75% of the values for a column could only be considered guesswork at best, lead to the decision to not include this column in the modeling process.
 
 In addition, there are 177 NaN values in the Age column, which amounts to roughly 20% of the data set. Since this variable *will* be used in the modeling process, some imputation will be necessary. Instead of imputing the **entire** column mean for **all** of the missing values, the distortion to the distribution of the values can be minimized by getting a little more granular.
 
@@ -70,19 +70,29 @@ For each model architecture, a number of different models were built, the best m
 | Bagging | 24 | 30.9 sec |
 | Support Vector Machine | 32 | 318.7 min |
 
-![](images/accuracy_plot.png)
-![](images/precision_plot.png)
-![](images/recall_plot.png)
+![](../images/accuracy_plot.png)
+![](../images/precision_plot.png)
+![](../images/recall_plot.png)
 
 ## Algorithm Tuning and Explanation
 
 Upon first glance, it seems rather shocking that Bagged Decision Tree's outperformed some of the more complex architectures, such as Gradient Boosting or a Random Forest. However, with a closer look, the $max~features$ parameter, **when not equal to 1**, allows each decision tree to have access to only a subset of the feature space. In a 1998 paper by T.Ho^1^, this ensemble method was coined a *Decision Forest*, a different albiet similar method to Random Forests.
 
-Recall that a Random Forest is a collection of decision trees, each tree being built a bootstrapped data set. At each split within any given tree, only a random sample of the predictors are available as candidates on which to create the split. This decorrelates the trees so that when multiple learners are averaged together, variance is reduced and the algorithm generalizes well.
+Recall that a Random Forest is a collection of decision trees, each tree being built on a bootstrapped data set. At each split within any given tree, only a random sample of the predictors are available as candidates on which to create the split. This process decorrelates the trees so that when multiple learners are averaged together, variance is reduced and the algorithm generalizes well.
 
-A Decision Forest is slightly different in that each decision tree within the ensemble **only has access to a random subset of the predictors.** Every node within a tree is then allowed to consider the full feature space **withing the already filtered feature space for that tree.** For example, if one is working with a **n x 12** data set, each tree within a Decision Forest will utilized all *n* observations, but only a random subset of the 12 features.
+A Decision Forest is slightly different. Each tree within a Decision Forest is built on the entire training data (not bootstrapped), however each tree **only has access to a random subset of the predictors.** Every node within a tree is then allowed to consider the full feature space **within the already filtered feature space for that tree.** For example, if one is working with a **n x 12** data set, each tree within a Decision Forest will utilized all *n* observations, but only a random subset of the 12 features.
 
 With a broader and more refined grid search, the optimal number of estimators seems to fluctuate around 350, with the optimal number of features being 13. These are the parameters that will be used when pitted against the benchmark model on the test set.
+
+## Test Set Scoring
+
+Once the optimal hyperparameters were determined for the Decision Forest, I used both the benchmark (logistic regression) and the Decision Forest on the held out validation set, where the Decision Forest scored 87%, 3 percentage points higher than the benchmark set in the first section of the analysis. Since this is a Kaggle Competition and true test set values are known, I submitted test set prediction for both the Decision Forest and Logistic Regression models, shown in the table below. 
+
+| Model | Validation Set Accuracy | Test Set Accuracy |
+| - | - | - |
+| Logistic Regression | 84.30% | 77.99% |
+| Decision Forest | 87.00% | 77.51% |
+
 
 ### References
 ^1^ T. Ho, “The random subspace method for constructing decision forests”, Pattern Analysis and Machine Intelligence, 20(8), 832-844, 1998.
