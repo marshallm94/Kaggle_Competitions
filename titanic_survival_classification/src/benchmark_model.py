@@ -147,7 +147,7 @@ def score_model(model, x_train, y_train, cv=5, verbose=True):
 if __name__ == "__main__":
 
     # data prep
-    df = pd.read_csv("../titanic_train.csv")
+    df = pd.read_csv("../data/titanic_train.csv")
     format_data(df)
     impute_age(df)
     df.drop(np.argwhere(pd.isnull(df['Embarked'].values)).ravel(), inplace=True)
@@ -155,7 +155,7 @@ if __name__ == "__main__":
 
     # for aligning testing set columns
     training_data = pd.get_dummies(X)
-    training_data.to_csv("../training_data.csv")
+    training_data.to_csv("../data/training_data.csv")
 
     X = pd.get_dummies(X).values
     y = df['Survived'].values
@@ -172,5 +172,5 @@ if __name__ == "__main__":
     validation_set_acc = accuracy_score(y_test, y_hat)
     print("\nLogistic Regression Validation Set Accuracy: {:.2f}%".format(validation_set_acc*100))
 
-    with open('logistic_regression_model.pickle', 'wb') as f:
+    with open('../models/logistic_regression_model.pickle', 'wb') as f:
         pickle.dump(log_mod, f, protocol=pickle.HIGHEST_PROTOCOL)

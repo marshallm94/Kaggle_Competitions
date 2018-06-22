@@ -133,7 +133,7 @@ def multi_model_grid_search(model_names, model_objects, model_grids, x_train, y_
 if __name__ == "__main__":
 
     # data prep
-    df = pd.read_csv("../titanic_train.csv")
+    df = pd.read_csv("../data/titanic_train.csv")
     format_data(df)
     impute_age(df)
     df.drop(np.argwhere(pd.isnull(df['Embarked'].values)).ravel(), inplace=True)

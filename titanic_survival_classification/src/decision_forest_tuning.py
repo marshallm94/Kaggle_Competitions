@@ -8,7 +8,7 @@ import pickle
 if __name__ == "__main__":
 
     # data prep
-    df = pd.read_csv("../titanic_train.csv")
+    df = pd.read_csv("../data/titanic_train.csv")
     format_data(df)
     impute_age(df)
     df.drop(np.argwhere(pd.isnull(df['Embarked'].values)).ravel(), inplace=True)
@@ -36,5 +36,5 @@ if __name__ == "__main__":
     validation_set_acc = accuracy_score(y_test, y_hat)
     print("\nDecision Forest Validation Set Accuracy: {:.2f}%".format(validation_set_acc*100))
 
-    with open('decision_forest_model.pickle', 'wb') as f:
+    with open('../models/decision_forest_model.pickle', 'wb') as f:
         pickle.dump(decision_forest, f, protocol=pickle.HIGHEST_PROTOCOL)

@@ -5,8 +5,8 @@ from benchmark_model import *
 if __name__ == "__main__":
 
     # data prep
-    training_data = pd.read_csv('../training_data.csv')
-    df = pd.read_csv("../titanic_test.csv")
+    training_data = pd.read_csv('../data/training_data.csv')
+    df = pd.read_csv("../data/titanic_test.csv")
     format_data(df)
     impute_age(df)
     df.loc[np.argwhere(pd.isnull(df['Fare'].values)).ravel(), "Fare"] = df["Fare"].mean()
@@ -20,13 +20,16 @@ if __name__ == "__main__":
 
     X = X.values
 
-    print(X.shape)
+    with open("../models/decision_forest_model.pickle", 'rb') as f:
+        model = pickle.load(f)
+        y_hat = model.predict(X)
 
-    file_dict = {"Logistic Regression": 'logistic_regression_model.pickle', "Decision Forest": 'decision_forest_model.pickle'}
+    submission = pd.DataFrame({'PassengerId': np.arange(892, 1310), "Survived": y_hat})
+    submission.to_csv("../data/decision_forest_submission.csv", index=False)
 
-    for name, filepath in file_dict.items():
-        with open(filepath, 'rb') as f:
-            model = pickle.load(f)
-            y_hat = model.predict(X)
-            # validation_set_acc = accuracy_score(y, y_hat)
-            # print("\n{} Test Set Accuracy: {:.2f}%".format(name, validation_set_acc*100))
+    with open("../models/logistic_regression_model.pickle", 'rb') as f:
+        model = pickle.load(f)
+        y_hat = model.predict(X)
+
+    submission = pd.DataFrame({'PassengerId': np.arange(892, 1310), "Survived": y_hat})
+    submission.to_csv("../data/logistic_regression_submission.csv", index=False)

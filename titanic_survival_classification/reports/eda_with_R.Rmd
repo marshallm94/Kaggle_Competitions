@@ -1,0 +1,446 @@
+---
+title: "An Statistical Walk Aboard the Titanic"
+author: "Marshall McQuillen"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE, include = TRUE)
+```
+
+## Guiding Question
+
+What characteristics separate those who survived from those who died?
+
+## Secondary Questions
+
+1. Does socioeconomic status have an affect on survival?
+2. How do gender and age affect rurvival rates?
+3. How does family size affect surival rates?
+
+```{r import_data}
+setwd("/Users/marsh/data_science_projects/Kaggle_Competitions/titanic_survival_classification/")
+training <- read.csv('/Users/marsh/data_science_projects/Kaggle_Competitions/titanic_survival_classification/titanic_train.csv')
+```
+
+```{r install/load_packages}
+# install.packages("tidyverse")
+suppressPackageStartupMessages(library(ggplot2))
+suppressPackageStartupMessages(library(dplyr))
+suppressPackageStartupMessages(library(knitr))
+```
+
+## 1 Data Overview
+
+Looking at the training data from a birds-eye view, there are 891 observations representing passengers and 12 variables. Since some of the variable names are a little cryptic, a description for each is provided below.
+
+| Variable Name | Description |
+| ----------------------------------------- | ----------------------------------------- |
+| PassengerId | Unique identifier for each passenger |
+| Survived | Binary; 1 = Survied & 0 = Died |
+| Pclass | Socioeconomic status; 1 = Upper, 2 = Middle & 3 = Lower |
+| Name | Passenger name |
+| Sex | Male or Female |
+| Age | Passenger age |
+| SibSp | Number of siblings + spouse aboard ship |
+| Parch | Number of parents + children aboard ship |
+| Ticket | Ticket number |
+| Fare | Amount paid for ticket |
+| Cabin | Cabin number |
+| Embarked | The town from which the passenger boarded the ship; C = Cherbourg, Q = Queenstown & S = Southhampton |
+
+First and foremost, by running `str(training)` on the data, it is apparent that the first entries in the Cabin and Embarked columns are empty strings, indicating that the data is probably not perfectly clean (no surprises there). Checking to see where any Null's might be, it becomes clear that there are in fact no nulls, and that these spaces were intentionally left empty. In addition to null values, all the NA's are in the Age, accounting for roughly 20% of the values in that column. Both of these will need to be imputed intelligently when the time to create a predictive model comes around.
+
+```{r data_overview}
+# str(training)
+
+#Set classes
+training$PassengerId <- as.factor(training$PassengerId)
+training$Survived <- as.factor(training$Survived)
+training$Pclass <- as.factor(training$Pclass)
+training$SibSp <- as.factor(training$SibSp)
+training$Parch <- as.factor(training$Parch)
+
+# view null count
+nulls <- lapply(training[,1:12], is.null)
+na <- lapply(training[,1:12], is.na)
+null_count <- lapply(nulls, sum)
+na_count <- lapply(na, sum)
+
+df <- mapply(data.frame, null_count, na_count)
+row.names(df) <- c("Null Count", "NA Count")
+
+df1 <- df[,1:6]
+df2 <- df[,7:12]
+
+knitr::kable(df1, caption = "Attribute Null & NA Counts")
+knitr::kable(df2, caption = "Attribute Null & NA Counts (continued)")
+
+#Percent of Age variable that is NA
+age_percent_na <- paste(round(sum(is.na(training$Age))/length(training$Age)*100, digits = 2), "%", sep = "")
+```
+
+## 2 Does Socioeconomic Status have an affect on Survival? 
+
+### 2.1 Does Money Sink or Swim?
+
+By creating a table with the Pclass (which refers to the socioeconomic status (SES) of the passenger) and Survived variables, one can get a good sense of the number of passengers that lived and died, based on their SES. Simple summation and division returns the probabilites of a passenger living given their respective SES.
+
+```{r pclass_vs_survived}
+#Probability of living by socio-economic status
+pclass_table <- with(training, table(Survived, Pclass))
+upper_class <- pclass_table[2,1]/sum(pclass_table[,1])
+middle_class <- pclass_table[2,2]/sum(pclass_table[,2])
+lower_class <- pclass_table[2,3]/sum(pclass_table[,3])
+
+row.names(pclass_table) <- c('Died','Survived')
+colnames(pclass_table) <- c('Upper','Middle','Lower')
+knitr::kable(pclass_table, caption = "Survival Counts by SES")
+#Probability of living given Upper Class
+upper_sr <- paste(round(upper_class*100, digits = 2), "%", sep = "")
+
+#Probability of living given Middle Class
+middle_sr <- paste(round(middle_class*100, digits = 2), "%", sep = "")
+
+#Probability of living given Lower Class
+lower_sr <- paste(round(lower_class*100, digits = 2), "%", sep = "")
+
+sr_table <- data.frame(c(upper_sr, middle_sr, lower_sr), row.names = c("Upper Class",'Middle Class','Lower Class'))
+colnames(sr_table) <- 'Probability of Living'
+knitr::kable(sr_table, caption = "Survival Rates by SES", align = 'r')
+```
+
+\pagebreak
+
+This same information is displayed visually below.
+
+\hfill
+
+```{r bayes_part_1}
+g <- ggplot(training, aes(y=Survived,  x=factor(Survived,
+                                                labels=c("Died","Lived"))))
+g <- g + geom_bar(aes(y=..prop.., group=Pclass,
+                      fill=factor(..x.., labels=c("Died","Lived"))))
+g <- g + facet_grid(~factor(Pclass,
+                            labels=c("Upper Class", "Middle Class",
+                                     "Lower Class")))
+g <- g + scale_y_continuous(labels = scales::percent) 
+g <- g + scale_fill_discrete(name="Survival Status", guide = FALSE)
+g <- g + labs(x="", y = "Percentage",
+              title = "Probabilities of Surviving Given Socio-Economic Status")
+g <- g + geom_text(
+      aes(label = paste(round((..count../c(216,216,184,184,491,491)), 4)*100, "%", sep = ""), y = ..prop..),  stat= "count",
+      vjust = c(17.25,10,12.75,14.5,6.5,21))
+g
+```
+
+#### 2.1.1 Illustrating Bayes Theorem with Survival Rates and Socioeconomic Status
+
+This type of classification problem creates a great opportunity to illustrate Bayes' Theorem. Recall that Bayes Theorem is defined as:
+
+$$P(A|B)~=~\frac{P(B|A)P(A)}{P(B)}$$
+
+where: 
+
+* $P(A|B)$ = Posterior
+* $P(B|A)$ = Likelihood
+* $P(A)$ = Prior
+* $P(B)$ = Normalizing Constant.
+
+The equation above can be rewritten to better match the problem context as:
+
+$$P(~"X~class~citizen"~|~"Lived"~)~=~\frac{P(~"Lived"~|~"X~class~citizen"~)~P(~"X~class~citizen"~)}{P(~"Lived"~)}$$
+
+where:
+
+* $P(~"X~class~citizen"~|~"Lived"~)$ = Posterior
+* $P(~"Lived"~|~"X~class~citizen"~)$ = Likelihood
+* $P(~"X~class~citizen"~)$ = Prior
+* $P(~"Lived"~)$ = Normalizing Constant.
+
+$P(~"Lived"~)$, the Normalizing Constant, will be the probability of living, *regardless of SES.* This could be broken out into the summation of three terms, $P(~"Lived"~|~"X~class~citizen"~)P(~"X~class~citizen"~)$ for all three SES, however it is far easier to calculate the proportion of those that lived over everyone that was aboard the ship. This comes out to be 38.38%.
+
+The final term needed to complete the right hand side of the equation, the Prior, is simply the proportion of those on board that were Upper, Middle or Lower class. These come out to be 24.24%, 20.65% and 55.11%, respectively, shown in the table below.
+
+```{r bayes_part_2}
+total <- nrow(training)
+total_died <- nrow(subset(training, Survived == 0))
+total_lived <- nrow(subset(training, Survived == 1))
+
+prob_lived <- total_lived / total
+
+upper_prob <- as.numeric(table(training$Pclass)[1])/nrow(training)
+middle_prob <- as.numeric(table(training$Pclass)[2])/nrow(training)
+lower_prob <- as.numeric(table(training$Pclass)[3])/nrow(training)
+
+upper_prob_str <- paste(round(upper_prob*100, digits = 2), "%", sep = "")
+middle_prob_str <- paste(round(middle_prob*100, digits = 2), "%", sep = "")
+lower_prob_str <- paste(round(lower_prob*100, digits = 2), "%", sep = "")
+
+ses_df <- data.frame(c(upper_prob_str, middle_prob_str, lower_prob_str), row.names = c("Upper Class",'Middle Class','Lower Class'))
+colnames(ses_df) <- "Probability of Being X Class"
+knitr::kable(ses_df, caption = "Socioeconomic Status Proportions Aboard the Titanic", align = 'r')
+```
+
+Now it is simply a matter of defining three different equations for each of the three possible socioeconomic status', and substituting in the corresponding numbers (Note that in the above percentages I rounded to two decimal places, however when calculating the final probability it is paramount that the entire number is used).
+
+$$P(~"Upper~class~citizen"~|~"Lived"~)~=~\frac{0.6296296\cdot0.2424242
+}{0.3838384}~=~0.3976608~=~39.77\%$$
+
+$$P(~"Middle~class~citizen"~|~"Lived"~)~=~\frac{0.4728261\cdot0.2065095}{0.3838384}~=~0.254386~=~25.44\%$$
+
+$$P(~"Lower~class~citizen"~|~"Lived"~)~=~\frac{0.2423625\cdot0.5510662}{0.3838384}~=~0.3479532~=~34.8\%$$
+
+```{r bayes_part_3}
+#Probability of being an Upper class citizen given a passenger lived
+prob_upper_given_lived <- (upper_class*upper_prob)/prob_lived
+
+#Probability of being a Middle class citizen given a passenger lived
+prob_middle_given_lived <- (middle_class*middle_prob)/prob_lived
+
+#Probability of being a Lower class ctizen given a passenger lived
+prob_lower_given_lived <- (lower_class*lower_prob)/prob_lived
+```
+
+\pagebreak
+
+This can be double checked visually by dividing the passengers into those that lived and died, and then, for each of those groups, plotting the percentage that were Upper, Middle and Lower class. Low and behold, Bayes was right.
+
+\hfill
+
+```{r bayes_part_4}
+f <- ggplot(training, aes(y = Pclass,
+                          x = factor(Pclass,labels=c("Upper","Middle","Lower"))))
+f <- f + geom_bar(aes(y=..prop.., group=Survived,
+                      fill = factor(..x.., labels=c("Upper Class","Middle Class","Lower Class"))))
+f <- f + facet_grid(~factor(Survived, labels = c("Died","Lived")))
+f <- f + scale_y_continuous(labels = scales::percent)
+f <- f + scale_fill_discrete(name = "Socio-Economic Status", guide = FALSE)
+f <- f + labs(x = "", y = "Percentage", title = "Probabilities of Socio-Economic Status Given Survival Status")
+f <- f + geom_text(
+      aes(label = paste(round((..count../c(549,549,549,342,342,342)), 4)*100, "%", sep = ""), y = ..prop..), stat= "count",
+      vjust = c(24,23,9,16.75,20.75,18.25))
+f
+
+```
+
+\pagebreak
+
+## 3 How do Gender and Age affect Survival Rates?
+
+A quick overview of the Gender and Age variables are shown below, demonstrating that most people aboard were men and between 20 - 40 years old.
+
+```{r gender_summary}
+props <- with(training, paste(round(table(Sex)/nrow(training)*100, 2), "%", sep = ""))
+df <- data.frame(props, row.names = c('Female','Male'))
+knitr::kable(df, col.names = "Proportion", align = 'r', caption = 'Gender Proportions')
+```
+
+```{r age_histogram}
+options(warn = -1)
+plt <- ggplot(training, aes(Age))
+plt <- plt + geom_histogram(aes(y = ..density..),
+                            col = 'blue',
+                            fill = 'blue',
+                            alpha = 0.2)
+plt <- plt + geom_density(col=2)
+plt <- plt + labs(x = 'Age', y = 'Density', title = 'Age Distribution')
+suppressMessages(print(plt))
+```
+
+### Gender
+
+Looking at the two plots on the following page, it is apparent that given that a passenber was female, her probability of surviving was 74.2%. On the other hand, if a passenger was male, he had over an 80% chance of dying. 
+
+The second plot shows the probabilities of a passenger being Male or Female, conditioned on whether they survived the sinking of the ship or not. Once again, there is a vast gender divide of the passengers that died, with 85% of all passenger that died being male. Given that a passenger survived, there is more than double the chance that she was female than male.
+
+```{r sex_vs_survived}
+#Sex vs. Survived
+a <- ggplot(training, aes(y=Survived,  x=factor(Survived,
+                                                labels=c("Died","Lived"))))
+a <- a + geom_bar(aes(y=..prop.., group=Sex,
+                      fill=factor(..x.., labels=c("Died","Lived"))))
+a <- a + facet_grid(~factor(Sex,
+                            labels=c("Female", "Male")))
+a <- a + scale_y_continuous(labels = scales::percent) 
+a <- a + scale_fill_discrete(name="Survival Status", guide = FALSE)
+a <- a + labs(x="", y = "Percentage",
+              title = "Probabilities of Surviving Given Gender")
+a <- a + geom_text(
+      aes(label = paste(round((..count../c(314,314,577,577)), 4)*100, "%", sep = ""), y = ..prop..),  stat= "count",
+      vjust = c(21,7,5,23))
+a
+```
+
+\hfill
+
+```{r survived_vs_sex}
+# survived vs. sex
+a <- ggplot(training,
+        aes(y=Sex,
+            x=factor(Sex,
+                     labels=c('Female','Male')
+                     )
+            )
+        )
+a <- a + geom_bar(aes(y=..prop..,
+                      group=Survived,
+                      fill=factor(..x.., labels=c('Female','Male')
+                                  )
+                      )
+                  )
+a <- a + facet_grid(~factor(Survived,
+                            labels=c('Died','Survived')
+                            )
+                    )
+a <- a + scale_y_continuous(labels = scales::percent) 
+a <- a + scale_fill_discrete(name='Sex', guide = FALSE)
+a <- a + labs(x="", y = "Percentage",
+              title = "Gender Proportions Conditioned on Survival Status")
+a <- a + geom_text(aes(
+    label = paste(round((..count../c(549,549,342,342)), 4)*100, "%", sep = ""),
+    y = ..prop..),
+    stat= "count",
+    vjust = c(24.5,4,9,19.5))
+a
+```
+
+### Interpretting Logistic Regression Using Passenger Age
+
+**If the goal of a model is a low error rate,** using only one variable is rarely a good idea. However, if interpretability and inference are the goal, using linear or logistic regression can provide unique insight into our data. In order to see how a passenger's age affects their chance of surviving the sinking of the ship, I decided to create a new column that puts passengers into certain bins, based on their age. I created 7 different bins, outlined in the table below, which separates each age group into those who lived and those who died.
+
+```{r age_binning}
+training$age_bin <- cut(training$Age, c(0,10,20,30,40,50,60,100), labels = c('0-10','11-20','21-30','31-40','41-50','50-60','Over 60'))
+tab <- with(training, table(Survived, age_bin))
+rownames(tab) <- c('Died','Survived')
+knitr::kable(tab, caption = 'Surival Counts by Age Group')
+```
+
+When a general linear model is fit using only this binned column, R one-hot-encodes the column, effectively creating a new column for each age group.The reason for the separation of the continuous age variable into bins becomes clear when the equation, with problem context accounted for, is expressed below.
+
+$$Log~Odds(Surviving)~=~\beta_1~(Age~0-10)~+~\beta_2~(Age~11-20)~+~\beta_3~(Age~21-30)~...~etc.$$
+
+Since each coefficient represents a change in the log odds of survival with a one unit change in its associated term, **and only one term will be non-zero (if a passenger is in the age group 0 to 10, they aren't going to be in any other age group)**, the log odds of a passenger in age group $j$ surviving will be equal to coefficient $\beta_j$. 
+
+$$Log~Odds(Surviving)~=~\beta_1~(1)~+~\beta_2~(0)~+~\beta_3~(0)~+~\beta_4~(0)~...~etc.$$
+
+Removing all 0 terms from the equation, the formula simplifies to: 
+
+$$Log~Odds(Surviving)_j~=~\beta_j$$
+A little math will show us the probability that a passenger survives, given a specific age group. By exponentiating the log odds (the output of logistic regression), the odds are returned, which can the be divided by one plus itself (equation below) to return the probability.
+
+$$P~=~\frac{Odds}{1~+~Odds}$$
+
+This is visually confirmed with a multi-faceted plot shown on the following page, in addition to taking the number of Survivors for each age group and dividing by the total number of passengers in that age group from the Survival Counts by Age Group Table.
+
+\pagebreak
+
+```{r log_odds}
+fit <- glm(Survived ~ age_bin - 1, training, family = 'binomial')
+log_odds_est <- summary(fit)$coef
+display_tab <- log_odds_est
+rownames(display_tab) <- c('0 - 10','11 - 20','21 - 30','31 - 40','41 - 50','50 - 60','Over 60')
+colnames(display_tab) <- c('Coefficient','1','2','3')
+knitr::kable(display_tab[,1], col.names = 'Coefficient', caption = "Logistic Regression Age Group Coefficients")
+
+log_odds_to_prob <- function(log_odds) {
+    odds <- exp(log_odds)
+    prob <- odds / (1 + odds)
+    return(prob)
+}
+probs <- log_odds_to_prob(log_odds_est[,1])
+names <- c('0 - 10','11 - 20','21 - 30','31 - 40','41 - 50','50 - 60','Over 60')
+df <- data.frame(names, paste(round(probs*100, 2), "%", sep = ""))
+rownames(df) <- 1:7
+knitr::kable(df, col.names = c("Age Group",'Probability of Surviving'), caption = "Probability of Surviving given Age Group", align = 'r')
+```
+
+
+
+```{r logistic_regression}
+a <- ggplot(training, aes(y=Survived,  x=factor(Survived,
+                                                labels=c("Died","Lived"))))
+a <- a + geom_bar(aes(y=..prop.., group=age_bin,
+                      fill=factor(..x..)))
+a <- a + facet_grid(~factor(age_bin))
+a <- a + scale_y_continuous(labels = scales::percent) 
+a <- a + scale_fill_discrete(name="Survival Status", guide = FALSE)
+a <- a + labs(x="", y = "Percentage",
+              title = "Survival Probabilites by Age Group")
+a
+```
+
+## 4 Family First
+
+Carrying the theme of the analysis into the familial realm, the two plots below show the probability of surviving based on the value in the $Parch$ column (the number of parents + children aboard per passenger) and the value in the $SibSp$ column (the spouse + number of siblings aboard per passenger).
+
+One important thing to note is the sample sizes for each facet within each plot, provided in a table below each of the associated plots. Since the goal of this analysis (and statistics in general) is to make assumptions about a population based on a sample, I would only be willing to take the survival rates of the passengers with 1, 2 or 3 in the $Parch$ column at face value; I would be hesitant to make any generalizations on the other possible values (4, 5, 6 and 7), due to such small sample sizes per group.
+
+\hfill
+
+```{r parch_visuals}
+#Parch
+h <- ggplot(data = training,
+            aes(y = Survived,
+                x = factor(Survived, labels = c("Died","Lived"))))
+h <- h + geom_bar(aes(y = ..prop.., group = Parch,
+                      fill = factor(..x..)))
+h <- h + facet_grid(~Parch)
+h <- h + scale_y_continuous(labels = scales::percent)
+h <- h + scale_fill_discrete(guide = FALSE)
+h <- h + labs(x = "", y = "Percentage", title = 'Family Survival: Parents + Children')
+h
+```
+
+\hfill
+
+```{r parch_table}
+
+parch_df <- with(training, table(Parch, Survived))
+rownames(parch_df) <- c('0 Parents or Children Aboard',
+                        '1 Parents or Children Aboard',
+                        '2 Parents or Children Aboard',
+                        '3 Parents or Children Aboard',
+                        '4 Parents or Children Aboard',
+                        '5 Parents or Children Aboard',
+                        '6 Parents or Children Aboard')
+knitr::kable(parch_df, col.names = c('Died','Survived'), caption = "Rapidly Decreasing Sample Sizes")
+```
+
+\pagebreak
+
+With regard to the previous paragraph, note that the sample sizes per possible value in the $SibSp$ column also decrease dramatically after 2. In the same vein as above, making assumptions about the population (test set) using $SibSp$ with values greater than two would be statistically irresponsible.
+
+\hfill
+
+```{r sibsp_visuals}
+d <- ggplot(data = training,
+            aes(y = Survived,
+                x = factor(Survived, labels = c("Died","Lived"))))
+d <- d + geom_bar(aes(y = ..prop.., group = SibSp,
+                      fill = factor(..x..)))
+d <- d + facet_grid(~SibSp)
+d <- d + scale_y_continuous(labels = scales::percent)
+d <- d + scale_fill_discrete(guide = FALSE)
+d <- d + labs(x = "", y = "Percentage", title = 'Family Survival: Spouse + Siblings')
+d
+```
+
+\hfill
+
+```{r sibsp_table}
+sibsp_df <- with(training, table(SibSp, Survived))
+rownames(sibsp_df) <- c('0 Siblings or Spouse Aboard',
+                        '1 Siblings or Spouse Aboard',
+                        '2 Siblings or Spouse Aboard',
+                        '3 Siblings or Spouse Aboard',
+                        '4 Siblings or Spouse Aboard',
+                        '5 Siblings or Spouse Aboard',
+                        '6 Siblings or Spouse Aboard')
+knitr::kable(sibsp_df, col.names = c('Died','Survived'), caption = "Rapidly Decreasing Sample Sizes: Part 2")
+```
+
+Note that this isn't to say that generalization about the population a whole can not be made. To say that the probability of survival decreases as the number of siblings aboard the ship increases is a sound assumption, since the sample size of that statement is the entire training data set, 891 observations. However, the validity of a generalization about survival probability *based on a specific value* in either the $Parch$ or $SibSp$ columns would depend on the sample size for that value.
+
+For example, to make the generalization that the probability of survival is 0% given a passenger has 4 children aboard would be ill-considered, taking into account that there were only 4 passengers aboard that had that many children with them. 
+

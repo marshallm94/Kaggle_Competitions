@@ -4,10 +4,10 @@
 
 In an effort to strengthen my programming knowledge across multiple languages, I am going to separate this analysis into two main parts:
 
-1. **[Exploratory Data Analysis with R](eda_with_R.pdf)**
+1. **[Exploratory Data Analysis with R](reports/eda_with_R.pdf)**
 
     * This will "tell the story" of the sinking of the Titanic using descriptive analytics on the training data, as well as provide some Bayes' Theorem and logistic regression interpretations using the data.
 
-2. **[Machine Learning with Python](machine_learning_report.pdf)**
+2. **[Machine Learning with Python](reports/machine_learning_report.pdf)**
 
     * I will test a variety of classification algorithms on the training data, performing a grid search over all and then using the best model on the testing data.
