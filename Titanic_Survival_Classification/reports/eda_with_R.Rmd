@@ -1,5 +1,5 @@
 ---
-title: "An Statistical Walk Aboard the Titanic"
+title: "A Statistical Walk Aboard the Titanic"
 author: "Marshall McQuillen"
 output: pdf_document
 ---
@@ -20,7 +20,7 @@ What characteristics separate those who survived from those who died?
 
 ```{r import_data}
 setwd("/Users/marsh/data_science_projects/Kaggle_Competitions/titanic_survival_classification/")
-training <- read.csv('/Users/marsh/data_science_projects/Kaggle_Competitions/titanic_survival_classification/titanic_train.csv')
+training <- read.csv('/Users/marsh/data_science_projects/Kaggle_Competitions/titanic_survival_classification/data/titanic_train.csv')
 ```
 
 ```{r install/load_packages}
